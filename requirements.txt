@@ -1,0 +1,7 @@
+# Put your requirements here. E.g:
+numpy
+pyteomics
+argparse
+pprintpp
+unimod-mapper 
+spectrum_utils

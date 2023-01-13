@@ -1,0 +1,12 @@
+{
+  "author": "AG",
+  "package_name_override": "fragannot",
+  "email": "",
+  "description": "A python CLI app for fragment annotation",
+  "url": "",
+  "python_version": "3.8",
+  "version": "1.0.55",
+  "scripts": [
+    "fragannot = fragannot:main"
+  ]
+}
