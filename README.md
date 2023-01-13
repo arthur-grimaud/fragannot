@@ -1,11 +1,21 @@
-# Python CLI Template
+# fragannot
+
+fragannot is a simple command-line tool in python that annotates fragments ions in MS2 mass spectra. This tools returns a JSON file with fragment annotation from a spectra file (in .mgf format) and a corresponding identification file in .mzid format.
+
+## Install
+
+## Usage
+
+---
+
+## Python CLI Template
 
 This is a template project for creating a Python CLI app intended for distribution to PyPI (so that you can `pip install` it later). It currently uses `Python 3.8` and has been developed/tested on Ubuntu.
 
-* 📦 Easily create a Python app that is distributed to [PyPI](https://pypi.org/) and can be installed by anyone with `pip install`. 
-* :computer: ​The package is configured with a `script`, so you can run it directly from a terminal once installed. 
-* ✅ Added sample tests with `pytest` so you can keep your package well tested! 
-* :100: Automatic version increment.
+- 📦 Easily create a Python app that is distributed to [PyPI](https://pypi.org/) and can be installed by anyone with `pip install`.
+- :computer: ​The package is configured with a `script`, so you can run it directly from a terminal once installed.
+- ✅ Added sample tests with `pytest` so you can keep your package well tested!
+- :100: Automatic version increment.
 
 ## Configuration
 
@@ -26,13 +36,11 @@ Here is the default sample configuration:
   "url": "https://github.com/pixegami/python-cli-template",
   "python_version": "3.8",
   "version": "0.0.8",
-  "scripts": [
-    "run-my-app = my_app:main"
-  ]
+  "scripts": ["run-my-app = my_app:main"]
 }
 ```
 
-This will be the information that is published to PyPI. Your `scripts` array allows you to specify which commands will be available once you install this package. 
+This will be the information that is published to PyPI. Your `scripts` array allows you to specify which commands will be available once you install this package.
 
 For example, this configuration will let you execute `run-my-app` as a command directly from terminal, which will call the `main()` function in the `my_app` package.
 
@@ -54,7 +62,7 @@ run-my-app
 # Executing 'main()' from my app!
 # Hello World
 
-run-my-app --version 
+run-my-app --version
 # Executing 'main()' from my app!
 # 0.0.7
 ```
@@ -111,6 +119,6 @@ The major and minor versions (the first two digits) can only be changed manually
 
 ## Related Reading
 
-* [Packaging Python projects](https://packaging.python.org/tutorials/packaging-projects/): A guide explaining how to package Python projects using `setup.py` and `setuptools` (we use this here).
-* [argparse](https://docs.python.org/3/library/argparse.html): I use this to "understand" CLI arguments and sub-commands.
-* [pytest](https://docs.pytest.org/en/stable/): Testing framework for this project.
+- [Packaging Python projects](https://packaging.python.org/tutorials/packaging-projects/): A guide explaining how to package Python projects using `setup.py` and `setuptools` (we use this here).
+- [argparse](https://docs.python.org/3/library/argparse.html): I use this to "understand" CLI arguments and sub-commands.
+- [pytest](https://docs.pytest.org/en/stable/): Testing framework for this project.
