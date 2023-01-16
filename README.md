@@ -4,7 +4,21 @@ fragannot is a simple command-line tool in python that annotates fragments ions 
 
 ## Install
 
+1-Clone the repository
+2-Run the script "publish_local.sh" ( can be found in /publish ) 
+
+This will package and install fragannot
+
 ## Usage
+
+the tool is ran a terminal as follow:
+
+$ fragannot -i identification.mzid -s spectra.mzid 
+
+-i : path to spectra identification file in .mzid format
+-s : path to spectra file in .mgf format (need to add .mzml) 
+
+
 
 ---
 
