@@ -23,6 +23,9 @@ import unimod_mapper
 from . import constant
 import spectrum_utils.spectrum as sus
 
+# type hinting
+from typing import List
+
 #
 um = unimod_mapper.UnimodMapper()
 
@@ -227,6 +230,42 @@ def read_mzml(self, spectra_file):
 
     pass
 
+def compute_theoretical_fragments2(sequence_length: int, fragment_types: List[str], charges: List[int] = [1], neutral_losses: List[str] = [], internal: bool = True) -> List[str]:
+
+    ion_directions = constant.ion_direction
+
+    n_term_ions = [ion_type for ion_type in fragment_types if ion_directions[ion_type] == "n-term"]
+    c_term_ions = [ion_type for ion_type in fragment_types if ion_directions[ion_type] == "c-term"]
+
+    n_term = ["t:" + ion_type for ion_type in n_term_ions]
+    c_term = [ion_type + ":t" for ion_type in c_term_ions]
+
+    # terminal fragments
+    n_term_frags = [n_term_frag + "@1:" + str(i + 1) for n_term_frag in n_term for i in range(sequence_length - 1)]
+    c_term_frags = [c_term_frag + "@" + str(i) + ":" + str(sequence_length) for c_term_frag in c_term for i in range(2, sequence_length + 1)]
+
+    charges_str = ["(" + str(charge) + ")" if charge < 0 else "(+" + str(charge) + ")" for charge in charges]
+    n_term_frags_with_charges = [n_term_frag + charge for n_term_frag in n_term_frags for charge in charges_str]
+    c_term_frags_with_charges = [c_term_frag + charge for c_term_frag in c_term_frags for charge in charges_str]
+
+    neutral_losses_str = ["[" + nl + "]" for nl in neutral_losses]
+    neutral_losses_str.append("")
+    n_term_frags_with_nl = [n_term_frag + nl for n_term_frag in n_term_frags_with_charges for nl in neutral_losses_str]
+    c_term_frags_with_nl = [c_term_frag + nl for c_term_frag in c_term_frags_with_charges for nl in neutral_losses_str]
+
+    internal_frags_with_nl = []
+
+    if internal:
+        # internal fragments
+        internal = [n_term_ion + ":" + c_term_ion for n_term_ion in n_term_ions for c_term_ion in c_term_ions]
+        internal_pos = [str(i) + ":" + str(j) for i in range(2, sequence_length) for j in range(2, sequence_length) if i <= j]
+        internal_frags = [internal_ions + "@" + internal_positions for internal_ions in internal for internal_positions in internal_pos]
+
+        internal_frags_with_charges = [internal_frag + charge for internal_frag in internal_frags for charge in charges_str]
+
+        internal_frags_with_nl = [internal_frag + nl for internal_frag in internal_frags_with_charges for nl in neutral_losses_str]
+
+    return n_term_frags_with_nl + c_term_frags_with_nl + internal_frags_with_nl
 
 def compute_theoretical_fragments(sequence, modifications, ionTypes):
     """Returns and set a list of m/z of fragment ions  and informations on the type/position of each fragments for a given peptidoform/proteoform"""
