@@ -19,6 +19,7 @@ from pyteomics import mass
 #
 import unimod_mapper
 import re
+import numpy as np
 
 #
 from . import constant
