@@ -18,6 +18,7 @@ from pyteomics import mass
 
 #
 import unimod_mapper
+import re
 
 #
 from . import constant
@@ -230,7 +231,14 @@ def read_mzml(self, spectra_file):
 
     pass
 
-def compute_theoretical_fragments2(sequence_length: int, fragment_types: List[str], charges: List[int] = [1], neutral_losses: List[str] = [], internal: bool = True) -> List[str]:
+
+def compute_theoretical_fragments2(
+    sequence_length: int,
+    fragment_types: List[str],
+    charges: List[int] = [1],
+    neutral_losses: List[str] = [],
+    internal: bool = True,
+) -> List[str]:
 
     ion_directions = constant.ion_direction
 
@@ -241,31 +249,114 @@ def compute_theoretical_fragments2(sequence_length: int, fragment_types: List[st
     c_term = [ion_type + ":t" for ion_type in c_term_ions]
 
     # terminal fragments
-    n_term_frags = [n_term_frag + "@1:" + str(i + 1) for n_term_frag in n_term for i in range(sequence_length - 1)]
-    c_term_frags = [c_term_frag + "@" + str(i) + ":" + str(sequence_length) for c_term_frag in c_term for i in range(2, sequence_length + 1)]
+    n_term_frags = [
+        n_term_frag + "@1:" + str(i + 1) for n_term_frag in n_term for i in range(sequence_length - 1)
+    ]
+    c_term_frags = [
+        c_term_frag + "@" + str(i) + ":" + str(sequence_length)
+        for c_term_frag in c_term
+        for i in range(2, sequence_length + 1)
+    ]
 
     charges_str = ["(" + str(charge) + ")" if charge < 0 else "(+" + str(charge) + ")" for charge in charges]
-    n_term_frags_with_charges = [n_term_frag + charge for n_term_frag in n_term_frags for charge in charges_str]
-    c_term_frags_with_charges = [c_term_frag + charge for c_term_frag in c_term_frags for charge in charges_str]
+    n_term_frags_with_charges = [
+        n_term_frag + charge for n_term_frag in n_term_frags for charge in charges_str
+    ]
+    c_term_frags_with_charges = [
+        c_term_frag + charge for c_term_frag in c_term_frags for charge in charges_str
+    ]
 
     neutral_losses_str = ["[" + nl + "]" for nl in neutral_losses]
     neutral_losses_str.append("")
-    n_term_frags_with_nl = [n_term_frag + nl for n_term_frag in n_term_frags_with_charges for nl in neutral_losses_str]
-    c_term_frags_with_nl = [c_term_frag + nl for c_term_frag in c_term_frags_with_charges for nl in neutral_losses_str]
+    n_term_frags_with_nl = [
+        n_term_frag + nl for n_term_frag in n_term_frags_with_charges for nl in neutral_losses_str
+    ]
+    c_term_frags_with_nl = [
+        c_term_frag + nl for c_term_frag in c_term_frags_with_charges for nl in neutral_losses_str
+    ]
 
     internal_frags_with_nl = []
 
     if internal:
         # internal fragments
         internal = [n_term_ion + ":" + c_term_ion for n_term_ion in n_term_ions for c_term_ion in c_term_ions]
-        internal_pos = [str(i) + ":" + str(j) for i in range(2, sequence_length) for j in range(2, sequence_length) if i <= j]
-        internal_frags = [internal_ions + "@" + internal_positions for internal_ions in internal for internal_positions in internal_pos]
+        internal_pos = [
+            str(i) + ":" + str(j)
+            for i in range(2, sequence_length)
+            for j in range(2, sequence_length)
+            if i <= j
+        ]
+        internal_frags = [
+            internal_ions + "@" + internal_positions
+            for internal_ions in internal
+            for internal_positions in internal_pos
+        ]
 
-        internal_frags_with_charges = [internal_frag + charge for internal_frag in internal_frags for charge in charges_str]
+        internal_frags_with_charges = [
+            internal_frag + charge for internal_frag in internal_frags for charge in charges_str
+        ]
 
-        internal_frags_with_nl = [internal_frag + nl for internal_frag in internal_frags_with_charges for nl in neutral_losses_str]
+        internal_frags_with_nl = [
+            internal_frag + nl for internal_frag in internal_frags_with_charges for nl in neutral_losses_str
+        ]
 
     return n_term_frags_with_nl + c_term_frags_with_nl + internal_frags_with_nl
+
+
+def theoretical_mass_to_charge(fragment_code, peptidoform):
+
+    start, end, ion_cap_start, ion_cap_end, charge, formula = parse_fragment_code(fragment_code)
+
+    # peptide and modification mass
+    sequence = []
+    mods = []
+    for aa, mod in peptidoform.parsed_sequence[start - 1 : end]:
+        sequence.append(aa)
+        if not mod is None:
+            mods.extend([m.mass for m in mod])
+
+    # mass AA sequence
+    P = mass.fast_mass(sequence="".join(sequence))
+    # mass modifications
+    M = sum(mods)
+    # mass start ion cap
+    SI = constant.ion_cap_delta_mass[ion_cap_start]
+    # mass end ion cap
+    EI = constant.ion_cap_delta_mass[ion_cap_end]
+    # hydrogen mass
+    H = mass.calculate_mass("H", absolute=True)
+    # loss mass
+    L = mass.calculate_mass(formula, absolute=True)
+    #
+    fragment_mass = (P + M + SI + EI + (H * charge) - L) / np.abs(charge)
+
+    return fragment_mass
+
+
+def parse_fragment_code(fragment_code: str):
+
+    # test if fragment code format is valid*
+    fragment_code_pattern = re.compile(".+(:).+(@)[0-9]+(:)[0-9]+(\()(\+|\-)[0-9](\))(\[(.*?)\])?")
+    if bool(fragment_code_pattern.match(fragment_code)) == False:
+        raise RuntimeError("Incorrect fragment code format: {0}".format(fragment_code))
+
+    ## Parse fragment code
+
+    start, end = [
+        int(i) for i in re.search("(?<=\@)(.*?)(?=\()", fragment_code).group(1).split(":")
+    ]  # Get start and end amino acid indexes
+    ion_cap_start, ion_cap_end = [
+        str(i) for i in re.search("^(.*?)(?=\@)", fragment_code).group(1).split(":")
+    ]  # Get start and end ion caps name
+    charge = int(re.search("(?<=\()(.*?)(?=\))", fragment_code).group(1))  # get charge state
+    formula = re.search("(?<=\[)(.*?)(?=\])", fragment_code)
+    if formula == None:
+        formula = ""
+    else:
+        formula = str(re.search("(?<=\[)(.*?)(?=\])", fragment_code).group(1))
+
+    return start, end, ion_cap_start, ion_cap_end, charge, formula
+
 
 def compute_theoretical_fragments(sequence, modifications, ionTypes):
     """Returns and set a list of m/z of fragment ions  and informations on the type/position of each fragments for a given peptidoform/proteoform"""
