@@ -5,3 +5,4 @@ argparse
 pprintpp
 unimod-mapper 
 spectrum_utils
+psm-utils
