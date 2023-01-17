@@ -23,6 +23,7 @@ import numpy as np
 
 #
 from . import constant
+from .parser import Parser as Parser
 import spectrum_utils.spectrum as sus
 
 # type hinting
@@ -61,105 +62,53 @@ def main(parser=argparse.ArgumentParser()):
 
 def fragment_annotation(ident_file, spectra_file):
 
-    # read_mzid(ident_file)
-    mod_mass_to_name = {}  # dictionnary to store mass of modification to name
+    P = Parser()
 
-    annotation = {}
-
-    mzid_obj = mzid.read(ident_file)  # load identification file
-    spec_obj = mgf.read(spectra_file)  # load spectra file
-
+    psms = P.read(spectra_file, ident_file)
     i = 0
-    for ident_mzid in mzid_obj:
-        i += 1
-        print(i)
-        # pprint(ident_mzid)
-        # Get the spectrum identifier
-        spectrum_id = ident_mzid["spectrumID"]
-        # Add spectrum object to annotation dictionnary
-        annotation[spectrum_id] = {}
-        # Add MS1 information
-        annotation[spectrum_id]["precursor_mz"] = ident_mzid["SpectrumIdentificationItem"][0][
-            "experimentalMassToCharge"
-        ]
-        peptide_sequence = ident_mzid["SpectrumIdentificationItem"][0]["PeptideSequence"]
-        annotation[spectrum_id]["peptide_sequence"] = peptide_sequence
-        # Modification:
-        pprint(ident_mzid["SpectrumIdentificationItem"][0])
-        try:
-            modifications = ident_mzid["SpectrumIdentificationItem"][0]["Modification"]
-        except KeyError:
-            modification = []
 
-        proforma, mod_mass_to_name = get_modification_proforma(
-            peptide_sequence,
-            modifications,
-            mod_mass_to_name=mod_mass_to_name,
+    psms_json = []
+
+    for psm in psms:
+
+        print(i)
+        theoretical_fragment_code = compute_theoretical_fragments2(
+            sequence_length=len(psm.peptidoform.sequence), fragment_types=["b", "y"]
         )
 
-        # Find and add information from spectra file
+        theoretical_fragment_dict = {
+            f: theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
+        }
 
-        spectrum = find_spectrum(spec_obj, spectrum_id, annotation[spectrum_id]["precursor_mz"])
-        annotation[spectrum_id]["MS2"] = {}
-        annotation[spectrum_id]["MS2"]["frag_mz"] = list(spectrum["m/z array"])
-        annotation[spectrum_id]["MS2"]["frag_intensity"] = list(spectrum["intensity array"])
+        annotation_mz, annotation_code = match_fragments(
+            psm.spectrum["mz"], theoretical_fragment_dict, tolerance=0.1
+        )
 
-        # Generate and match theoretical fragments
-        theo_frag = compute_theoretical_fragments(peptide_sequence, modifications, ["zdot", "c", "cdot-z+1"])
-        out_match = match_fragments(annotation[spectrum_id]["MS2"]["frag_mz"], theo_frag, 0.01)
+        psm.spectrum["intensity"] = psm.spectrum["intensity"].tolist()
+        psm.spectrum["mz"] = psm.spectrum["mz"].tolist()
+        psm.spectrum["theoretical_mz"] = annotation_mz
+        psm.spectrum["theoretical_code"] = annotation_code
 
-        annotation[spectrum_id]["MS2"]["frag_theo_mz"] = out_match[0]
-        annotation[spectrum_id]["MS2"]["frag_theo_type"] = out_match[1]
-        annotation[spectrum_id]["MS2"]["frag_theo_start"] = out_match[2]
-        annotation[spectrum_id]["MS2"]["frag_theo_stop"] = out_match[3]
+        # add to json
+        print(psm.spectrum)
 
-        # print(theo_frag)
+        psms_json.append(
+            {
+                "sequence": psm.peptidoform.sequence,
+                "proforma": psm.peptidoform.proforma,
+                "annotation": psm.spectrum,
+            }
+        )
 
-    with open("sample.json", "w") as outfile:
-        json.dump(annotation, outfile)
+        if i == 1000:
+            break
+        i += 1
 
-    pprint(annotation)
-
-    pass
+    with open("data.json", "w", encoding="utf8") as f:
+        json.dump(psms_json, f)
 
 
 # READERS/PARSERS #
-
-
-def find_spectrum(spec_obj, spectrum_id, precursor_mz):
-    """
-    Parameters
-    ----------
-
-    Returns
-    -------
-    """
-    spec = None
-
-    try:
-        spec = spec_obj.get_spectrum(spectrum_id)
-    except (KeyError, NameError):
-        print(spectrum_id)
-
-    try:
-        spectrum_id = spectrum_id.split("=")[1]
-        spec = spec_obj.get_spectrum(spectrum_id)
-    except (KeyError, NameError):
-        print(spectrum_id)
-
-    if spec == None:
-        raise TypeError("Spectrum not found")
-
-    if spec["params"]["pepmass"][0] != precursor_mz:
-        print(
-            "ERROR: mz value from mgf does not match the one in mzid (this is probably due an error in spectrum's title/index)\n",
-            spec["params"]["pepmass"][0],
-            " : ",
-            precursor_mz,
-        )
-        raise NameError("MismatchRT")
-
-    return spec
 
 
 def get_modification_proforma(sequence, modification, mod_mass_to_name=None):
@@ -470,27 +419,15 @@ def compute_theoretical_fragments(sequence, modifications, ionTypes):
 def match_fragments(fragment_mz, frag_theo, tolerance):
 
     fragment_theoretical_mz = []
-    fragment_theoretical_type = []
-    fragment_theoretical_start = []
-    fragment_theoretical_stop = []
+    fragment_theoretical_code = []
+
     for mz in fragment_mz:
         closest_frag = min(frag_theo.items(), key=lambda x: abs(x[1] - mz))
         if abs(mz - closest_frag[1]) <= tolerance:
             fragment_theoretical_mz.append(closest_frag[1])
-            fragment_theoretical_type.append(closest_frag[0].split(",")[2])
-            fragment_theoretical_start.append(closest_frag[0].split(",")[0])
-            fragment_theoretical_stop.append(closest_frag[0].split(",")[1])
+            fragment_theoretical_code.append(closest_frag[0])
         else:
             fragment_theoretical_mz.append(None)
-            fragment_theoretical_type.append(None)
-            fragment_theoretical_start.append(None)
-            fragment_theoretical_stop.append(None)
+            fragment_theoretical_code.append(None)
 
-    return (
-        fragment_theoretical_mz,
-        fragment_theoretical_type,
-        fragment_theoretical_start,
-        fragment_theoretical_stop,
-    )
-
-    pass
+    return (fragment_theoretical_mz, fragment_theoretical_code)

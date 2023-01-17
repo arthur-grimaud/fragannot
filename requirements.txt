@@ -6,4 +6,3 @@ pprintpp
 unimod-mapper 
 spectrum_utils
 psm_utils
-re
