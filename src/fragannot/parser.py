@@ -13,6 +13,7 @@ from urllib.request import urlopen
 import os
 import re
 import gzip
+from .spectrumfile import SpectrumFile
 
 RAW_FILE = r"../../data/2020_09_90_092320_Hazbun_SigmaGluC_CID_orbiorbi.mgf"
 IDENT_FILE = r"../../data/2020_09_90_092320_Hazbun_Sigma_GluC_CID_orbiorbi_peptide.mzid"
@@ -100,22 +101,7 @@ class Parser:
         file_path : str
             Path to the raw file
         """
-    
-        # Infer filetype from file path
-        extension = splitext(file_path)[1]
-
-        if extension.lower() == ".mzml":
-            self.logger.info(f"Inferred mzML format from {file_path}")
-            return mzml.MzML(file_path)
-        elif extension.lower() == ".mgf":
-            self.logger.info(f"Inferred MGF format from {file_path}")
-            return mgf.IndexedMGF(file_path)
-        
-        else:
-            self.logger.error(
-                f"Cannot infer format from {file_path}, only mzML and MGF formats are supported"
-            )
-            raise Exception("Unsupported spectra file format")
+        return SpectrumFile(file_path)
     
     def __read_id_file(self, file_path, file_format):
         """ Read identification file more generously then psm_utils
