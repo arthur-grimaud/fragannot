@@ -157,13 +157,13 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
         psm.spectrum["theoretical_code"] = annotation_code
         psm.spectrum["matches_count"] = annotation_count
 
-        # add to json
-
         psms_json.append(
             {
                 "sequence": psm.peptidoform.sequence,
                 "proforma": psm.peptidoform.proforma,
                 "annotation": psm.spectrum,
+                "spectrum_id": psm.spectrum_id,
+                "identification_score": psm.score,
             }
         )
         i += 1

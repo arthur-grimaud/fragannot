@@ -20,6 +20,46 @@ IDENT_FILE = r"../../data/2020_09_90_092320_Hazbun_Sigma_GluC_CID_orbiorbi_pepti
 #RAW_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/generated/Pt1_F_100K_tech-rep1.pride.mgf.gz"
 #IDENT_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/peptides_1_1_0.mzid.gz"
 
+# Excerpt from MS:1001143 items (PSM-level search engine specific statistic)
+STANDARD_SEARCHENGINE_SCORES = [
+    "Amanda:AmandaScore",
+    "Andromeda:score",
+    "Byonic:Score",
+    "Comet:Xcorr",
+    "DeBunker:score",
+    "IdentityE Score",
+    "KSDP score",
+    "MS-GF:SpecEValue",
+    "MS-GF:EValue",
+    "MS-GF:RawScore",
+    "MS-GF:DeNovoScore",
+    "MSFit:Mowse score",
+    "MSPathFinder:RawScore" "MSPepSearch:score",
+    "Mascot:score",
+    "MetaMorpheus:score",
+    "OMSSA:evalue",
+    "OpenPepXL:score",
+    "PEAKS:peptideScore",
+    "PeptideShaker PSM score",
+    "Phenyx:Pepzscore",
+    "ProLuCID:xcorr",
+    "ProSight:specral C-score",
+    "Profound:z value",
+    "ProteinProspector:score",
+    "ProteinScape:SequestMetaScore",
+    "ProteomeDiscoverer:Delta Score",
+    "SEQUEST:xcorr",
+    "SIM-XL score ",
+    "SQID:score ",
+    "Sonar:Score",
+    "SpectrumMill:Score",
+    "TopMG:spectral E-Value",
+    "X!Tandem:hyperscore",
+    "ZCore:probScore:",
+    "Percolator:score",
+    "xi:score",
+]
+
 class Parser:
     def __init__(self):
         # Set up logging
@@ -131,8 +171,14 @@ class Parser:
         
         if extension.lower() == ".mzid" or extension.lower() == ".mzidentml":
             result = []
+            
+            score_name = ""
             for psm in mzid.MzIdentML(file_path):
+                
                 spectrumID = psm['spectrumID']
+                if score_name == "":
+                    score_name = self.__infer_score_name(psm["SpectrumIdentificationItem"][0].keys())
+                score = psm["SpectrumIdentificationItem"][0][score_name]
                 sequence = psm['SpectrumIdentificationItem'][0]['PeptideEvidenceRef'][0]['PeptideSequence']
                 modifications = psm['SpectrumIdentificationItem'][0]['PeptideEvidenceRef'][0].get('Modification', None)
                 filename = split(psm['location'])[1]
@@ -158,8 +204,13 @@ class Parser:
                     
                     if aas[-1] != '':
                         sequence = f'{sequence}-{aas[-1]}'
-    
-                result.append(PSM(peptidoform=Peptidoform(sequence), run=filename, spectrum_id=spectrumID))
+                
+                result_psm = PSM(peptidoform=Peptidoform(sequence), run=filename, spectrum_id=spectrumID, score=score)
+                
+                if result_psm is None:
+                    self.logger.error(f"Result PSM is None. Sequence: {sequence}, file_name: {file_name}, spectrumID: {spectrumID}, score: {score}")
+                
+                result.append(result_psm)
         
             return result
         
@@ -167,7 +218,12 @@ class Parser:
             return read_file(file_path, filetype=file_format)
 
     def __load_log_config(self):
-        """ Load log configurations. """
+        """ Load log configurations from log_conf.json
+        
+            Returns:
+            -------
+            config : Configuration loaded fro, log_conf.json
+        """
         config = {}
         with open("log_conf.json", "r", encoding="utf-8") as fd:
             config = json.load(fd)
@@ -231,6 +287,17 @@ class Parser:
         if len(fname) == 0:
             return None
         return fname[0]
+        
+    @staticmethod
+    def __infer_score_name(keys):
+        """Infer the score from the known list of PSM scores."""
+
+        for score in STANDARD_SEARCHENGINE_SCORES:
+            if score in keys:
+                return score
+        else:
+            print(keys)
+            raise Exception("No known score metric found in mzIdentML file.")
 
 
 if __name__ == "__main__":
