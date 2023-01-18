@@ -119,33 +119,34 @@ class Parser:
             result = []
             for psm in mzid.MzIdentML(file_path):
                 spectrumID = psm['spectrumID']
-                sequence = psm['SpectrumIdentificationItem'][0]['PeptideEvidenceRef'][0]['PeptideSequence']
-                modifications = psm['SpectrumIdentificationItem'][0]['PeptideEvidenceRef'][0].get('Modification', None)
-                filename = split(psm['location'])[1]
-                if not modifications is None:
-                    aas = [''] + [aa for aa in sequence] + ['']
-                    for mod in modifications:
-                        loc = mod['location']
-                        mass = mod['monoisotopicMassDelta']
-                        if 'residues' in mod.keys():
-                            res = mod['residues'][0]
-                            if loc > 0 and not res == aas[loc]:
-                                raise Exception(f'Mismatch {modifications} {sequence} {res} {aas[loc]} {loc}')
-                        try:        
-                            aas[loc] += f'[+{mass}]' if mass > 0 else f'[{mass}]'
-                        except Exception:
-                            print(psm)
-                            break
-                
-                    sequence = ''.join(aas[1:-1])
-                    
-                    if aas[0] != '':
-                        sequence = f'{aas[0]}-{sequence}'
-                    
-                    if aas[-1] != '':
-                        sequence = f'{sequence}-{aas[-1]}'
-    
-                result.append(PSM(peptidoform=Peptidoform(sequence), run=filename, spectrum_id=spectrumID))
+                for spectrum_identification in psm['SpectrumIdentificationItem']:
+                    sequence = spectrum_identification['PeptideEvidenceRef'][0]['PeptideSequence']
+                    modifications = spectrum_identification['PeptideEvidenceRef'][0].get('Modification', None)
+                    filename = split(psm['location'])[1]
+                    if not modifications is None:
+                        aas = [''] + [aa for aa in sequence] + ['']
+                        for mod in modifications:
+                            loc = mod['location']
+                            mass = mod['monoisotopicMassDelta']
+                            if 'residues' in mod.keys():
+                                res = mod['residues'][0]
+                                if loc > 0 and not res == aas[loc]:
+                                    raise Exception(f'Mismatch {modifications} {sequence} {res} {aas[loc]} {loc}')
+                            try:        
+                                aas[loc] += f'[+{mass}]' if mass > 0 else f'[{mass}]'
+                            except Exception:
+                                print(psm)
+                                break
+
+                        sequence = ''.join(aas[1:-1])
+
+                        if aas[0] != '':
+                            sequence = f'{aas[0]}-{sequence}'
+
+                        if aas[-1] != '':
+                            sequence = f'{sequence}-{aas[-1]}'
+
+                    result.append(PSM(peptidoform=Peptidoform(sequence), run=filename, spectrum_id=spectrumID))
         
             return result
         
@@ -221,4 +222,6 @@ class Parser:
 
 if __name__ == "__main__":
     parser = Parser()
-    parser.read(RAW_FILE, IDENT_FILE)
+    spectra = parser.read(RAW_FILE, IDENT_FILE, 'infer')
+    
+    print(spectra[:5])
