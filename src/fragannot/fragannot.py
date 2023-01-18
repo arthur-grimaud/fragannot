@@ -39,7 +39,7 @@ def main(parser=argparse.ArgumentParser()):
     )
 
     parser.add_argument(
-        "-t", "--tolerance", type=float, default=0.1, required=False, help="MS2 tolerance in PPM"
+        "-t", "--tolerance", type=float, default=0.05, required=False, help="MS2 tolerance in Da"
     )
 
     parser.add_argument(
@@ -306,7 +306,7 @@ def parse_fragment_code(fragment_code: str):
 
 
 def matching(mz1, mz2, tol):
-    if abs((1 - mz1 / mz2) * 1000000) <= tol:
+    if abs(mz1 - mz2) <= tol:
         return True
     return False
 
