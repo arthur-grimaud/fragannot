@@ -28,7 +28,7 @@ class Parser:
         self.spectra = None
         self.psm_list = None
 
-    def read(self, raw_file, ident_file):
+    def read(self, raw_file, ident_file, file_format):
         """ Read and process raw file and identification file.
         
         Parameters
@@ -57,11 +57,11 @@ class Parser:
                 else:
                     self.logger.error(f"File doesn't exist: {raw_file}")
                     raise Exception("File doesn't exist")
-            self.__load(raw_file_name, ident_file_name)
+            self.__load(raw_file_name, ident_file_name, file_format)
         except Exception as ex:
             self.logger.error(f"Couldn't read file. Exception:\n{traceback.format_exc()}")
 
-        self.logger.info(f"Read {len(self.psm_list)} from identification file")
+        self.logger.info(f"Read {len(self.psm_list)} PSMs from identification file")
         
         count = 0
         for psm in self.psm_list:
@@ -79,7 +79,7 @@ class Parser:
         self.output_fname = os.path.basename(output_fpath)
         return self.psm_list
         
-    def __load(self, raw_file_path, ident_file_path):
+    def __load(self, raw_file_path, ident_file_path, file_format):
         """ Load raw file and identification file.
         
         Parameters
@@ -90,7 +90,7 @@ class Parser:
             Path to the identification file
         """
         self.spectra = self.__read_raw_file(raw_file_path)
-        self.psm_list = self.__read_id_file(ident_file_path)
+        self.psm_list = self.__read_id_file(ident_file_path, file_format)
         
     def __read_raw_file(self, file_path):
         """ Read raw file 
@@ -117,13 +117,15 @@ class Parser:
             )
             raise Exception("Unsupported spectra file format")
     
-    def __read_id_file(self, file_path):
+    def __read_id_file(self, file_path, file_format):
         """ Read identification file more generously then psm_utils
         
         Parameters
         ----------
         file_path : str
             Path to the raw file
+        file_format : str
+            Identification file format
         """
         extension = splitext(file_path)[1]
         
@@ -162,7 +164,7 @@ class Parser:
             return result
         
         else:
-            return read_file(file_path)
+            return read_file(file_path, filetype=file_format)
 
     def __load_log_config(self):
         """ Load log configurations. """

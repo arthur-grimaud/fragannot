@@ -1,3 +1,4 @@
 python setup.py sdist bdist_wheel
-pip install -U --find-links=dist\ fragannot
+pip uninstall -y fragannot
+pip install --find-links=dist\ fragannot
 python clean.py

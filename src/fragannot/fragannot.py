@@ -58,6 +58,14 @@ def main(parser=argparse.ArgumentParser()):
         required=False,
         help="list of fragment charges to be considered",
     )
+    parser.add_argument(
+        "-F",
+        "--format",
+        type=str,
+        default="infer",
+        required=False,
+        help="Identification file format"
+    )
 
     parser.add_argument(
         "-l",
@@ -84,20 +92,19 @@ def main(parser=argparse.ArgumentParser()):
             fragment_types=args.fragment_types,
             charges=args.charges,
             losses=args.losses,
+            file_format=args.format
         )
-
 
 def print_parameters(args):
 
     for arg, val in args.items():
         print(f"{arg} : {val} \n")
 
-
-def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses):
+def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
 
     P = Parser()
 
-    psms = P.read(spectra_file, ident_file)
+    psms = P.read(spectra_file, ident_file, file_format=file_format)
     i = 0
 
     psms_json = []
