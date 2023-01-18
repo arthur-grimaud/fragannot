@@ -69,7 +69,7 @@ def main(parser=argparse.ArgumentParser()):
         "-l",
         "--losses",
         type=str,
-        default=[""],
+        default=[],
         nargs="+",
         required=False,
         help="list molecular formula to be considered a possible neutral loss (e.g H20 for water loss)",
@@ -101,6 +101,30 @@ def print_parameters(args):
 
 
 def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
+    """
+    Annotate theoretical and observed fragment ions in a spectra file.
+
+    Parameters:
+    ----------
+    ident_file : str
+        Filename of an identification file
+    spectra_file : str
+        Filename of a spectra file
+    tolerance : float
+        Tolerance value in ppm for fragment matching
+    fragment_types : list
+        List of fragment types (fragment type must be defined in constant.py ion_cap_formula)
+    charges : list
+        List of charges (e.g ["+1", "-2"])
+    losses : list
+        List of neutral losses molecular formula (e.g ["H2O"])
+    file_format : str
+        String indicating the file format of the input files
+
+    Returns:
+    -------
+    None
+    """
 
     P = Parser()
 
@@ -330,4 +354,4 @@ def match_fragments(exp_mz, theo_frag, tolerance):
 
         iter_2, last_match = tee(last_match)
 
-    return (fragment_theoretical_code, fragment_theoretical_mz, fragment_theoretical_nmatch)
+    return (fragment_theoretical_mz, fragment_theoretical_code, fragment_theoretical_nmatch)
