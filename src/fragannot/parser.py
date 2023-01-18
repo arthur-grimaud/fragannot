@@ -4,14 +4,21 @@ import traceback
 import logging
 import logging.config
 import json
+import requests
 from datetime import datetime
 from pyteomics import mgf, mzml, mzid
 from urllib.parse import urlparse
 from os.path import exists, splitext, split
+from urllib.request import urlopen
+import os
+import re
+import gzip
 
 RAW_FILE = r"../../data/2020_09_90_092320_Hazbun_SigmaGluC_CID_orbiorbi.mgf"
 IDENT_FILE = r"../../data/2020_09_90_092320_Hazbun_Sigma_GluC_CID_orbiorbi_peptide.mzid"
 
+#RAW_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/generated/Pt1_F_100K_tech-rep1.pride.mgf.gz"
+#IDENT_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/peptides_1_1_0.mzid.gz"
 
 class Parser:
     def __init__(self):
@@ -21,13 +28,36 @@ class Parser:
         self.spectra = None
         self.psm_list = None
 
-    def load(self, raw_file, ident_file):
-        self.spectra = self.read_raw_file(raw_file)
-        self.psm_list = self.read_id_file(ident_file)
-            
     def read(self, raw_file, ident_file):
+        """ Read and process raw file and identification file.
+        
+        Parameters
+        ----------
+        raw_file : str
+            Path or url to the raw file
+        ident_file_path : str
+            Path or url to the identification file
+        """
         try:
-            self.load(raw_file, ident_file)
+            if self.__is_url(raw_file):
+                self.logger.info("Raw file is not local, try to download.")
+                raw_file_name = self.__get_file_from_url(raw_file)
+            else:
+                if os.path.exists(raw_file):
+                    raw_file_name = raw_file
+                else:
+                    self.logger.error(f"File doesn't exist: {raw_file}")
+                    raise Exception("File doesn't exist")
+            if self.__is_url(ident_file):
+                self.logger.info("Ident file is not local, try to download.")
+                ident_file_name = self.__get_file_from_url(ident_file)
+            else:
+                if os.path.exists(ident_file):
+                    ident_file_name = ident_file
+                else:
+                    self.logger.error(f"File doesn't exist: {raw_file}")
+                    raise Exception("File doesn't exist")
+            self.__load(raw_file_name, ident_file_name)
         except Exception as ex:
             self.logger.error(f"Couldn't read file. Exception:\n{traceback.format_exc()}")
 
@@ -48,9 +78,30 @@ class Parser:
             
             
         return self.psm_list    
-            
-    def read_raw_file(self, file_path):
-        # infer filetype from file path
+        
+    def __load(self, raw_file_path, ident_file_path):
+        """ Load raw file and identification file.
+        
+        Parameters
+        ----------
+        raw_file_path : str
+            Path to the raw file
+        ident_file_path : str
+            Path to the identification file
+        """
+        self.spectra = self.__read_raw_file(raw_file_path)
+        self.psm_list = self.__read_id_file(ident_file_path)
+        
+    def __read_raw_file(self, file_path):
+        """ Read raw file 
+        
+        Parameters
+        ----------
+        file_path : str
+            Path to the raw file
+        """
+    
+        # Infer filetype from file path
         extension = splitext(file_path)[1]
 
         if extension.lower() == ".mzml":
@@ -66,7 +117,14 @@ class Parser:
             )
             raise Exception("Unsupported spectra file format")
     
-    def read_id_file(self, file_path):
+    def __read_id_file(self, file_path):
+        """ Read identification file more generously then psm_utils
+        
+        Parameters
+        ----------
+        file_path : str
+            Path to the raw file
+        """
         extension = splitext(file_path)[1]
         
         if extension.lower() == ".mzid" or extension.lower() == ".mzidentml":
@@ -107,17 +165,70 @@ class Parser:
             return read_file(file_path)
 
     def __load_log_config(self):
+        """ Load log configurations. """
         config = {}
         with open("log_conf.json", "r", encoding="utf-8") as fd:
             config = json.load(fd)
         return config
+        
+    def __uncompress(self, file_path, block_size=65536):
+        new_file_path = file_path
+        if file_path.endswith('.gz'):
+            new_file_path = file_path[:-3]
+            with gzip.open(file_path, 'rb') as s_file, open(new_file_path, 'wb') as d_file:
+                while True:
+                    block = s_file.read(block_size)
+                    if not block:
+                        break
+                    else:
+                        d_file.write(block)
+        return new_file_path
 
     # Check if the given filename is a url or not
-    def __is_local(url):
+    def __is_url(self, url):
+        is_url = True
         url_parsed = urlparse(url)
         if url_parsed.scheme in ("file", ""):
-            return exists(url_parsed.path)
-        return False
+            is_url = False
+        return is_url
+        
+    def __get_file_from_url(self, url):
+        """ Download file from url and return the path to the file
+        
+        Parameters
+        ----------
+        url : str
+            URL to the file to download
+        """
+        if not os.path.exists(r".\downloads"):
+            os.makedirs(r".\downloads")
+        
+        r = requests.get(url, allow_redirects=True)
+        if url.find('/'):
+            file_path = ".\downloads\\" + url.rsplit('/', 1)[1]
+        else:
+            file_path = ".\downloads\\" + self.__getFilename_fromCd(r.headers.get('content-disposition'))
+                    
+        open(file_path, 'wb').write(r.content)
+        file_path = self.__uncompress(file_path)
+        
+        return file_path
+        
+    def __getFilename_fromCd(self, cd):
+        """ Gets filename from content disposition
+        
+        Parameters
+        ----------
+        cd : str
+            Content disposition
+        """
+        if not cd:
+            return None
+        fname = re.findall('filename=(.+)', cd)
+        print(fname)
+        if len(fname) == 0:
+            return None
+        return fname[0]
 
 
 if __name__ == "__main__":
