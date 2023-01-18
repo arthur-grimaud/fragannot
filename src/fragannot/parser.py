@@ -75,9 +75,9 @@ class Parser:
                     
             except KeyError:
                 self.logger.warning(f'SpectrumId - {psm["spectrum_id"]} not found')
-            
-            
-        return self.psm_list    
+        output_fpath  = os.path.splitext(raw_file_name)[0] + '.json'
+        self.output_fname = os.path.basename(output_fpath)
+        return self.psm_list
         
     def __load(self, raw_file_path, ident_file_path, file_format):
         """ Load raw file and identification file.
@@ -236,3 +236,4 @@ class Parser:
 if __name__ == "__main__":
     parser = Parser()
     parser.read(RAW_FILE, IDENT_FILE)
+    print(parser.output_fname)
