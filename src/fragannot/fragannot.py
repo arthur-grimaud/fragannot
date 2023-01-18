@@ -135,7 +135,7 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
             }
         )
 
-    with open("data.json", "w", encoding="utf8") as f:
+    with open(P.output_fname, "w", encoding="utf8") as f:
         json.dump(psms_json, f)
 
 
