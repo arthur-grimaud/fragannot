@@ -9,6 +9,9 @@ import numpy as np
 import re
 from typing import List  # type hinting
 from pyteomics import mass
+from itertools import tee
+from random import uniform
+
 
 # Local
 from ._version import __version__
@@ -36,7 +39,7 @@ def main(parser=argparse.ArgumentParser()):
     )
 
     parser.add_argument(
-        "-t", "--tolerance", type=float, default=0.1, required=False, help="MS2 tolerance in Dalton"
+        "-t", "--tolerance", type=float, default=0.05, required=False, help="MS2 tolerance in Da"
     )
 
     parser.add_argument(
@@ -59,19 +62,14 @@ def main(parser=argparse.ArgumentParser()):
         help="list of fragment charges to be considered",
     )
     parser.add_argument(
-        "-F",
-        "--format",
-        type=str,
-        default="infer",
-        required=False,
-        help="Identification file format"
+        "-F", "--format", type=str, default="infer", required=False, help="Identification file format"
     )
 
     parser.add_argument(
         "-l",
         "--losses",
         type=str,
-        default=[""],
+        default=[],
         nargs="+",
         required=False,
         help="list molecular formula to be considered a possible neutral loss (e.g H20 for water loss)",
@@ -92,15 +90,41 @@ def main(parser=argparse.ArgumentParser()):
             fragment_types=args.fragment_types,
             charges=args.charges,
             losses=args.losses,
-            file_format=args.format
+            file_format=args.format,
         )
+
 
 def print_parameters(args):
 
     for arg, val in args.items():
         print(f"{arg} : {val} \n")
 
+
 def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
+    """
+    Annotate theoretical and observed fragment ions in a spectra file.
+
+    Parameters:
+    ----------
+    ident_file : str
+        Filename of an identification file
+    spectra_file : str
+        Filename of a spectra file
+    tolerance : float
+        Tolerance value in ppm for fragment matching
+    fragment_types : list
+        List of fragment types (fragment type must be defined in constant.py ion_cap_formula)
+    charges : list
+        List of charges (e.g ["+1", "-2"])
+    losses : list
+        List of neutral losses molecular formula (e.g ["H2O"])
+    file_format : str
+        String indicating the file format of the input files
+
+    Returns:
+    -------
+    None
+    """
 
     P = Parser()
 
@@ -123,7 +147,7 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
             f: theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
         }
 
-        annotation_mz, annotation_code = match_fragments(
+        annotation_mz, annotation_code, annotation_count = match_fragments(
             psm.spectrum["mz"], theoretical_fragment_dict, tolerance=tolerance
         )
 
@@ -131,18 +155,20 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
         psm.spectrum["mz"] = psm.spectrum["mz"].tolist()
         psm.spectrum["theoretical_mz"] = annotation_mz
         psm.spectrum["theoretical_code"] = annotation_code
-
-        # add to json
+        psm.spectrum["matches_count"] = annotation_count
 
         psms_json.append(
             {
                 "sequence": psm.peptidoform.sequence,
                 "proforma": psm.peptidoform.proforma,
                 "annotation": psm.spectrum,
+                "spectrum_id": psm.spectrum_id,
+                "identification_score": psm.score,
             }
         )
+        i += 1
 
-    with open("data.json", "w", encoding="utf8") as f:
+    with open(P.output_fname, "w", encoding="utf8") as f:
         json.dump(psms_json, f)
 
 
@@ -279,18 +305,53 @@ def parse_fragment_code(fragment_code: str):
     return start, end, ion_cap_start, ion_cap_end, charge, formula
 
 
-def match_fragments(fragment_mz, frag_theo, tolerance):
+def matching(mz1, mz2, tol):
+    if abs(mz1 - mz2) <= tol:
+        return True
+    return False
 
-    fragment_theoretical_mz = []
+
+def match_fragments(exp_mz, theo_frag, tolerance):
+
+    theo_frag = [[k, v] for k, v in sorted(theo_frag.items(), key=lambda item: item[1])]
+
+    iter_2, last_match = tee(iter(theo_frag))
+
+    d = {}
+
     fragment_theoretical_code = []
+    fragment_theoretical_mz = []
+    fragment_theoretical_nmatch = []
 
-    for mz in fragment_mz:
-        closest_frag = min(frag_theo.items(), key=lambda x: abs(x[1] - mz))
-        if abs(mz - closest_frag[1]) <= tolerance:
-            fragment_theoretical_mz.append(closest_frag[1])
-            fragment_theoretical_code.append(closest_frag[0])
+    for i in exp_mz:
+        d.setdefault(i, [])
+        found = False
+        while True:
+            j = next(iter_2, (None, None))
+
+            # print(j)
+            if j[1] is None:
+                break
+            if matching(i, j[1], tolerance):
+                k = [j[0], j[1], abs(i - j[1])]
+
+                d[i].append(k)
+                if not found:
+                    iter_2, last_match = tee(iter_2)
+                    found = True
+            else:
+                if found:
+                    break
+
+        fragment_theoretical_nmatch.append(len(d[i]))
+        if len(d[i]) > 0:
+            closest = min(d[i], key=lambda t: t[2])
+            fragment_theoretical_code.append(closest[0])
+            fragment_theoretical_mz.append(closest[1])
         else:
-            fragment_theoretical_mz.append(None)
             fragment_theoretical_code.append(None)
+            fragment_theoretical_mz.append(None)
 
-    return (fragment_theoretical_mz, fragment_theoretical_code)
+        iter_2, last_match = tee(last_match)
+
+    return (fragment_theoretical_mz, fragment_theoretical_code, fragment_theoretical_nmatch)
