@@ -59,11 +59,23 @@ def main(parser=argparse.ArgumentParser()):
         help="list of fragment charges to be considered",
     )
 
+    parser.add_argument(
+        "-l",
+        "--losses",
+        type=str,
+        default=[""],
+        nargs="+",
+        required=False,
+        help="list molecular formula to be considered a possible neutral loss (e.g H20 for water loss)",
+    )
+
     args = parser.parse_args()
 
     if args.version:
         return __version__
     else:
+
+        print_parameters(vars(args))
 
         fragment_annotation(
             ident_file=args.identification,
@@ -71,11 +83,17 @@ def main(parser=argparse.ArgumentParser()):
             tolerance=args.tolerance,
             fragment_types=args.fragment_types,
             charges=args.charges,
+            losses=args.losses,
         )
-        return "end return"
 
 
-def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges):
+def print_parameters(args):
+
+    for arg, val in args.items():
+        print(f"{arg} : {val} \n")
+
+
+def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses):
 
     P = Parser()
 
@@ -88,7 +106,10 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
 
         print(i)
         theoretical_fragment_code = compute_theoretical_fragments2(
-            sequence_length=len(psm.peptidoform.sequence), fragment_types=fragment_types, charges=charges
+            sequence_length=len(psm.peptidoform.sequence),
+            fragment_types=fragment_types,
+            charges=charges,
+            neutral_losses=losses,
         )
 
         theoretical_fragment_dict = {
@@ -105,7 +126,6 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
         psm.spectrum["theoretical_code"] = annotation_code
 
         # add to json
-        print(psm.spectrum)
 
         psms_json.append(
             {
@@ -114,10 +134,6 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
                 "annotation": psm.spectrum,
             }
         )
-
-        if i == 1000:
-            break
-        i += 1
 
     with open("data.json", "w", encoding="utf8") as f:
         json.dump(psms_json, f)
