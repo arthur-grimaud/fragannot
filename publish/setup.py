@@ -95,4 +95,5 @@ setuptools.setup(
     install_requires=requirement_packages,
     classifiers=[f"Programming Language :: Python :: {PYTHON_VERSION}"],
     entry_points={"console_scripts": SCRIPTS},
+    include_package_data=True,
 )

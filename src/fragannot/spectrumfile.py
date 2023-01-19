@@ -1,10 +1,12 @@
 import re
+import logging
 from pyteomics import mzml, mgf
 from os.path import splitext
 from collections import defaultdict
 
 class SpectrumFile:
     def __init__(self, file_path):
+        self.logger = logging.getLogger(__name__)
         self.indices = defaultdict(dict)
         self.spectra_source = None
         self.file_format = None
@@ -18,21 +20,21 @@ class SpectrumFile:
         extension = splitext(file_path)[1]
 
         if extension.lower() == ".mzml":
-            print(f"Inferred mzML format from {file_path}")
+            self.logger.info(f"Inferred mzML format from {file_path}")
             self.spectra_source = mzml.MzML(file_path)
             self.file_format = 'mzml'
             self._build_index = self._index_MZML
             self.get_by_id = self._get_by_id_MZML
             
         elif extension.lower() == ".mgf":
-            print(f"Inferred MGF format from {file_path}")
+            self.logger.info(f"Inferred MGF format from {file_path}")
             self.spectra_source = mgf.IndexedMGF(file_path)
             self.file_format = 'mgf'
             self._build_index = self._index_MGF
             self.get_by_id = self._get_by_id_MGF
         
         else:
-            print(
+            self.logger.info(
                 f"Cannot infer format from {file_path}, only mzML and MGF formats are supported"
             )
             raise Exception("Unsupported spectra file format")

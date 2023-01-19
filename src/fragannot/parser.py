@@ -64,7 +64,7 @@ STANDARD_SEARCHENGINE_SCORES = [
 class Parser:
     def __init__(self):
         # Set up logging
-        logging.config.dictConfig(self.__load_log_config())
+        #logging.config.dictConfig(self.__load_log_config())
         self.logger = logging.getLogger(__name__)
         self.spectra = None
         self.psm_list = None
@@ -113,8 +113,8 @@ class Parser:
                 psm.spectrum = {"mz": spectrum["m/z array"],
                                 "intensity": spectrum["intensity array"]}
                 count += 1
-                if count % 256 == 0:
-                    print(f'\r{count} spectra processed')
+                if count % 500 == 0:
+                    self.logger.info(f'{count} spectra processed')
                     
             except KeyError:
                 self.logger.warning(f'SpectrumId - {psm["spectrum_id"]} not found')
@@ -186,7 +186,7 @@ class Parser:
                                 try:        
                                     aas[loc] += f'[+{mass}]' if mass > 0 else f'[{mass}]'
                                 except Exception:
-                                    print(psm)
+                                    self.logger.error(f"Mass error at psm: {psm}")
                                     break
 
                             sequence = ''.join(aas[1:-1])
@@ -202,8 +202,6 @@ class Parser:
                                           spectrum_id=spectrumID, 
                                           score = score,
                                           rank = rank))
-                    else:
-                        self.logger.info(f"Dropped identification with rank: {spectrum_identification['rank']}")
         
             return result
         
@@ -276,7 +274,7 @@ class Parser:
         if not cd:
             return None
         fname = re.findall('filename=(.+)', cd)
-        print(fname)
+        self.logger.info(fname)
         if len(fname) == 0:
             return None
         return fname[0]
@@ -293,7 +291,7 @@ class Parser:
                                     f"file {all_scores}, used score: {all_scores[0]}")
             return all_scores[0]
         else:
-            print(keys)
+            self.logger.info(keys)
             raise Exception("No known score metric found in mzIdentML file.")
 
 
