@@ -64,7 +64,6 @@ STANDARD_SEARCHENGINE_SCORES = [
 class Parser:
     def __init__(self):
         # Set up logging
-        #logging.config.dictConfig(self.__load_log_config())
         self.logger = logging.getLogger(__name__)
         self.spectra = None
         self.psm_list = None

@@ -29,7 +29,7 @@ class Fragannot():
         logging.config.dictConfig(self.__load_log_config())
         self.logger = logging.getLogger(__name__)
 
-    def fragment_annotation(self, ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
+    def fragment_annotation(self, ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file = True):
         """
         Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -104,8 +104,11 @@ class Fragannot():
             # if i == 1000:
             #     break
 
-        with open(P.output_fname, "w", encoding="utf8") as f:
-            json.dump(psms_json, f)
+        if write_file:
+            with open(P.output_fname, "w", encoding="utf8") as f:
+                json.dump(psms_json, f)
+
+        return psms_json
 
 
     # Function
@@ -402,15 +405,14 @@ def main(parser=argparse.ArgumentParser()):
             file_format=args.format,
         )
         
-def annotate_fragments(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
+def annotate_fragments(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file = True):
     fragannot = Fragannot()
-    fragannot.fragment_annotation(
-        ident_file=ident_file,
-        spectra_file=spectra_file,
-        tolerance=tolerance,
-        fragment_types=fragment_types,
-        charges=charges,
-        losses=losses,
-        file_format=file_format,
-    )
+    return fragannot.fragment_annotation(ident_file=ident_file,
+                                         spectra_file=spectra_file,
+                                         tolerance=tolerance,
+                                         fragment_types=fragment_types,
+                                         charges=charges,
+                                         losses=losses,
+                                         file_format=file_format,
+                                         write_file = write_file)
     
