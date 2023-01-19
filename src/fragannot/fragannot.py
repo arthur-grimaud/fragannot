@@ -11,7 +11,7 @@ from typing import List  # type hinting
 from pyteomics import mass
 from itertools import tee
 from random import uniform
-
+from pyteomics import parser
 
 # Local
 from ._version import __version__
@@ -169,6 +169,9 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
         )
         i += 1
 
+        # if i == 1000:
+        #     break
+
     with open(P.output_fname, "w", encoding="utf8") as f:
         json.dump(psms_json, f)
 
@@ -263,7 +266,8 @@ def theoretical_mass_to_charge(fragment_code, peptidoform):
             mods.extend([m.mass for m in mod])
 
     # mass AA sequence
-    P = mass.fast_mass(sequence="".join(sequence))
+    ps = parser.parse("".join(sequence), show_unmodified_termini=True)
+    P = mass.calculate_mass(parsed_sequence=ps)
     # mass modifications
     M = sum(mods)
     # mass start ion cap
@@ -271,7 +275,7 @@ def theoretical_mass_to_charge(fragment_code, peptidoform):
     # mass end ion cap
     EI = constant.ion_cap_delta_mass[ion_cap_end]
     # hydrogen mass
-    H = mass.calculate_mass("H", absolute=True)
+    H = 1.00784
     # loss mass
     L = mass.calculate_mass(formula, absolute=True)
 
