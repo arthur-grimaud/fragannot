@@ -100,7 +100,7 @@ def print_parameters(args):
         print(f"{arg} : {val} \n")
 
 
-def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format):
+def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file = True):
     """
     Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -173,9 +173,11 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
         # if i == 1000:
         #     break
 
-    with open(P.output_fname, "w", encoding="utf8") as f:
-        json.dump(psms_json, f)
+    if write_file:
+        with open(P.output_fname, "w", encoding="utf8") as f:
+            json.dump(psms_json, f)
 
+    return psms_json
 
 # Function
 
