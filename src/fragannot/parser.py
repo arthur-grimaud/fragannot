@@ -30,12 +30,10 @@ STANDARD_SEARCHENGINE_SCORES = [
     "DeBunker:score",
     "IdentityE Score",
     "KSDP score",
-    "MS-GF:SpecEValue",
-    "MS-GF:EValue",
     "MS-GF:RawScore",
-    "MS-GF:DeNovoScore",
     "MSFit:Mowse score",
-    "MSPathFinder:RawScore" "MSPepSearch:score",
+    "MSPathFinder:RawScore",
+    "MSPepSearch:score",
     "Mascot:score",
     "MetaMorpheus:score",
     "OMSSA:evalue",
@@ -270,13 +268,17 @@ class Parser:
             return None
         return fname[0]
         
-    @staticmethod
-    def __infer_score_name(keys):
+    def __infer_score_name(self, keys):
         """Infer the score from the known list of PSM scores."""
-
+        all_scores = []
         for score in STANDARD_SEARCHENGINE_SCORES:
             if score in keys:
-                return score
+                all_scores.append(score)
+        if len(all_scores) != 0:
+            if len(all_scores) > 1:
+                self.logger.warning(f"More than one score was found in the identification" +
+                                    f"file {all_scores}, used score: {all_scores[0]}")
+            return all_scores[0]
         else:
             print(keys)
             raise Exception("No known score metric found in mzIdentML file.")
