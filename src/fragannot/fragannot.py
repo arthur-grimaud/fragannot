@@ -164,6 +164,7 @@ def fragment_annotation(ident_file, spectra_file, tolerance, fragment_types, cha
                 "annotation": psm.spectrum,
                 "spectrum_id": psm.spectrum_id,
                 "identification_score": psm.score,
+                "rank": psm.rank,
             }
         )
         i += 1

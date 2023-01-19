@@ -18,6 +18,8 @@ from .spectrumfile import SpectrumFile
 RAW_FILE = r"../../data/2020_09_90_092320_Hazbun_SigmaGluC_CID_orbiorbi.mgf"
 IDENT_FILE = r"../../data/2020_09_90_092320_Hazbun_Sigma_GluC_CID_orbiorbi_peptide.mzid"
 
+RANK_LIMIT = 1
+
 #RAW_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/generated/Pt1_F_100K_tech-rep1.pride.mgf.gz"
 #IDENT_FILE = r"https://ftp.pride.ebi.ac.uk/pride/data/archive/2017/08/PXD006552/peptides_1_1_0.mzid.gz"
 
@@ -67,7 +69,7 @@ class Parser:
         self.spectra = None
         self.psm_list = None
 
-    def read(self, raw_file, ident_file, file_format):
+    def read(self, raw_file, ident_file, file_format, max_rank = RANK_LIMIT):
         """ Read and process raw file and identification file.
         
         Parameters
@@ -77,6 +79,8 @@ class Parser:
         ident_file_path : str
             Path or url to the identification file
         """
+        
+        self.max_rank = max_rank
         try:
             if self.__is_url(raw_file):
                 self.logger.info("Raw file is not local, try to download.")
@@ -161,36 +165,45 @@ class Parser:
                 
                 spectrumID = psm['spectrumID']
                 for spectrum_identification in psm['SpectrumIdentificationItem']:
-                    if score_name == "":
-                        score_name = self.__infer_score_name(psm["SpectrumIdentificationItem"][0].keys())
-                    score = psm["SpectrumIdentificationItem"][0][score_name]
-                    sequence = spectrum_identification['PeptideEvidenceRef'][0]['PeptideSequence']
-                    modifications = spectrum_identification['PeptideEvidenceRef'][0].get('Modification', None)
-                    filename = split(psm['location'])[1]
-                    if not modifications is None:
-                        aas = [''] + [aa for aa in sequence] + ['']
-                        for mod in modifications:
-                            loc = mod['location']
-                            mass = mod['monoisotopicMassDelta']
-                            if 'residues' in mod.keys():
-                                res = mod['residues'][0]
-                                if loc > 0 and not res == aas[loc]:
-                                    raise Exception(f'Mismatch {modifications} {sequence} {res} {aas[loc]} {loc}')
-                            try:        
-                                aas[loc] += f'[+{mass}]' if mass > 0 else f'[{mass}]'
-                            except Exception:
-                                print(psm)
-                                break
+                    rank = spectrum_identification["rank"]
+                    if  rank <= self.max_rank:
+                        if score_name == "":
+                            score_name = self.__infer_score_name(spectrum_identification.keys())
+                        score = spectrum_identification[score_name]
+                        sequence = spectrum_identification['PeptideEvidenceRef'][0]['PeptideSequence']
+                        modifications = spectrum_identification['PeptideEvidenceRef'][0].get('Modification', None)
+                        
+                        filename = split(psm['location'])[1]
+                        if not modifications is None:
+                            aas = [''] + [aa for aa in sequence] + ['']
+                            for mod in modifications:
+                                loc = mod['location']
+                                mass = mod['monoisotopicMassDelta']
+                                if 'residues' in mod.keys():
+                                    res = mod['residues'][0]
+                                    if loc > 0 and not res == aas[loc]:
+                                        raise Exception(f'Mismatch {modifications} {sequence} {res} {aas[loc]} {loc}')
+                                try:        
+                                    aas[loc] += f'[+{mass}]' if mass > 0 else f'[{mass}]'
+                                except Exception:
+                                    print(psm)
+                                    break
 
-                        sequence = ''.join(aas[1:-1])
+                            sequence = ''.join(aas[1:-1])
 
-                        if aas[0] != '':
-                            sequence = f'{aas[0]}-{sequence}'
+                            if aas[0] != '':
+                                sequence = f'{aas[0]}-{sequence}'
 
-                        if aas[-1] != '':
-                            sequence = f'{sequence}-{aas[-1]}'
+                            if aas[-1] != '':
+                                sequence = f'{sequence}-{aas[-1]}'
 
-                    result.append(PSM(peptidoform=Peptidoform(sequence), run=filename, spectrum_id=spectrumID, score = score))
+                        result.append(PSM(peptidoform=Peptidoform(sequence), 
+                                          run=filename, 
+                                          spectrum_id=spectrumID, 
+                                          score = score,
+                                          rank = rank))
+                    else:
+                        self.logger.info(f"Dropped identification with rank: {spectrum_identification['rank']}")
         
             return result
         
