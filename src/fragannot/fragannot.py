@@ -22,14 +22,23 @@ from . import constant
 from .parser import Parser as Parser
 
 
-class Fragannot():
-
+class Fragannot:
     def __init__(self):
         # Set up logging
         logging.config.dictConfig(self.__load_log_config())
         self.logger = logging.getLogger(__name__)
 
-    def fragment_annotation(self, ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file = True):
+    def fragment_annotation(
+        self,
+        ident_file,
+        spectra_file,
+        tolerance,
+        fragment_types,
+        charges,
+        losses,
+        file_format,
+        write_file=True,
+    ):
         """
         Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -63,7 +72,7 @@ class Fragannot():
         psms_json = []
 
         for psm in psms:
-            
+
             if (i + 1) % 100 == 0:
                 self.logger.info(f"{i + 1} spectra annotated")
             theoretical_fragment_code = self.compute_theoretical_fragments2(
@@ -77,10 +86,9 @@ class Fragannot():
                 f: self.theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
             }
 
-            annotation_mz, annotation_code, annotation_count = \
-                self.match_fragments(psm.spectrum["mz"], 
-                                     theoretical_fragment_dict, 
-                                     tolerance=tolerance)
+            annotation_mz, annotation_code, annotation_count = self.match_fragments(
+                psm.spectrum["mz"], theoretical_fragment_dict, tolerance=tolerance
+            )
 
             psm.spectrum["intensity"] = psm.spectrum["intensity"].tolist()
             psm.spectrum["mz"] = psm.spectrum["mz"].tolist()
@@ -96,7 +104,7 @@ class Fragannot():
                     "spectrum_id": psm.spectrum_id,
                     "identification_score": psm.score,
                     "rank": psm.rank,
-                    "precursor_intensity" : 666,
+                    "precursor_intensity": 666,
                 }
             )
             i += 1
@@ -109,7 +117,6 @@ class Fragannot():
                 json.dump(psms_json, f)
 
         return psms_json
-
 
     # Function
 
@@ -164,7 +171,9 @@ class Fragannot():
 
         if internal:
             # internal fragments
-            internal = [n_term_ion + ":" + c_term_ion for n_term_ion in n_term_ions for c_term_ion in c_term_ions]
+            internal = [
+                n_term_ion + ":" + c_term_ion for n_term_ion in n_term_ions for c_term_ion in c_term_ions
+            ]
             internal_pos = [
                 str(i) + ":" + str(j)
                 for i in range(2, sequence_length)
@@ -182,15 +191,16 @@ class Fragannot():
             ]
 
             internal_frags_with_nl = [
-                internal_frag + nl for internal_frag in internal_frags_with_charges for nl in neutral_losses_str
+                internal_frag + nl
+                for internal_frag in internal_frags_with_charges
+                for nl in neutral_losses_str
             ]
 
         return n_term_frags_with_nl + c_term_frags_with_nl + internal_frags_with_nl
 
     def theoretical_mass_to_charge(self, fragment_code, peptidoform):
 
-        start, end, ion_cap_start, ion_cap_end, charge, formula = \
-            self.parse_fragment_code(fragment_code)
+        start, end, ion_cap_start, ion_cap_end, charge, formula = self.parse_fragment_code(fragment_code)
 
         # peptide and modification mass
         sequence = []
@@ -292,26 +302,26 @@ class Fragannot():
             iter_2, last_match = tee(last_match)
 
         return (fragment_theoretical_mz, fragment_theoretical_code, fragment_theoretical_nmatch)
-        
+
     def print_parameters(self, args):
         params = ""
         for arg, val in args.items():
             params = params + f"{arg} : {val} \n\t"
         self.logger.info(params)
-        
+
     def __load_log_config(self):
-        """ Load log configurations from log_conf.json
-        
-            Returns:
-            -------
-            config : Configuration loaded fro, log_conf.json
+        """Load log configurations from log_conf.json
+
+        Returns:
+        -------
+        config : Configuration loaded fro, log_conf.json
         """
         config = {}
-        with open(os.path.dirname(__file__) + "\log_conf.json", "r", encoding="utf-8") as fd:
+        with open(os.path.join(os.path.dirname(__file__), "log_conf.json"), "r", encoding="utf-8") as fd:
             config = json.load(fd)
         return config
-        
-        
+
+
 # function called on start
 def main(parser=argparse.ArgumentParser()):
 
@@ -370,30 +380,32 @@ def main(parser=argparse.ArgumentParser()):
         return __version__
     else:
         fragannot = Fragannot()
-        
-        welcome_msg = "........................................\n\t" + \
-                      "..lo:::'.;:c:;..........................\n\t" + \
-                      "..odc:..;d:.:d;.........................\n\t" + \
-                      "..ol'...;xo:ox,.........................\n\t" + \
-                      "..oc....;d;.;d;.........................\n\t" + \
-                      "..:;....':'.':'...'''............''.....\n\t" + \
-                      ".................:ccc;..........,::'....\n\t" + \
-                      ".....................'::'.....;:,.......\n\t" + \
-                      "......................:l:;,;,;cl,.......\n\t" + \
-                      "......................:l:,;:lc;,,''''...\n\t" + \
-                      "......................:l' .;l;. 'clc;'..\n\t" + \
-                      "......................:lc::clc::clc'....\n\t" + \
-                      "......................:lclccllc,;:'.....\n\t" + \
-                      ".......'..........'..':cccccc:;;;,'.....\n\t" + \
-                      "......;l;......';:ccc::::::::;;,........\n\t" + \
-                      "......;l;....';cccclllcccccccc;.........\n\t" + \
-                      "......;c;..,ccccllcclllllllll:..........\n\t" + \
-                      "........';:ccllllllllllllllll:..........\n\t" + \
-                      ".........',;cllcc:;'';cl:,,;c:..........\n\t" + \
-                      "...........,cllc:;....:l,...;:..........\n\t"
+
+        welcome_msg = (
+            "........................................\n\t"
+            + "..lo:::'.;:c:;..........................\n\t"
+            + "..odc:..;d:.:d;.........................\n\t"
+            + "..ol'...;xo:ox,.........................\n\t"
+            + "..oc....;d;.;d;.........................\n\t"
+            + "..:;....':'.':'...'''............''.....\n\t"
+            + ".................:ccc;..........,::'....\n\t"
+            + ".....................'::'.....;:,.......\n\t"
+            + "......................:l:;,;,;cl,.......\n\t"
+            + "......................:l:,;:lc;,,''''...\n\t"
+            + "......................:l' .;l;. 'clc;'..\n\t"
+            + "......................:lc::clc::clc'....\n\t"
+            + "......................:lclccllc,;:'.....\n\t"
+            + ".......'..........'..':cccccc:;;;,'.....\n\t"
+            + "......;l;......';:ccc::::::::;;,........\n\t"
+            + "......;l;....';cccclllcccccccc;.........\n\t"
+            + "......;c;..,ccccllcclllllllll:..........\n\t"
+            + "........';:ccllllllllllllllll:..........\n\t"
+            + ".........',;cllcc:;'';cl:,,;c:..........\n\t"
+            + "...........,cllc:;....:l,...;:..........\n\t"
+        )
         fragannot.logger.info("-= Starting fragannot =-")
         fragannot.logger.info(welcome_msg)
-        
+
         fragannot.print_parameters(vars(args))
         fragannot.fragment_annotation(
             ident_file=args.identification,
@@ -404,15 +416,19 @@ def main(parser=argparse.ArgumentParser()):
             losses=args.losses,
             file_format=args.format,
         )
-        
-def annotate_fragments(ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file = True):
+
+
+def annotate_fragments(
+    ident_file, spectra_file, tolerance, fragment_types, charges, losses, file_format, write_file=True
+):
     fragannot = Fragannot()
-    return fragannot.fragment_annotation(ident_file=ident_file,
-                                         spectra_file=spectra_file,
-                                         tolerance=tolerance,
-                                         fragment_types=fragment_types,
-                                         charges=charges,
-                                         losses=losses,
-                                         file_format=file_format,
-                                         write_file = write_file)
-    
+    return fragannot.fragment_annotation(
+        ident_file=ident_file,
+        spectra_file=spectra_file,
+        tolerance=tolerance,
+        fragment_types=fragment_types,
+        charges=charges,
+        losses=losses,
+        file_format=file_format,
+        write_file=write_file,
+    )
