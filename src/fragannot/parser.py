@@ -163,6 +163,7 @@ class Parser:
             for psm in mzid.MzIdentML(file_path):
                 
                 spectrumID = psm['spectrumID']
+                print(spectrumID)
                 for spectrum_identification in psm['SpectrumIdentificationItem']:
                     rank = spectrum_identification["rank"]
                     if  rank <= self.max_rank:

@@ -2,9 +2,7 @@
 import argparse
 from argparse import ArgumentError
 from logging import warning
-import warnings
 import json
-import unimod_mapper
 import numpy as np
 import re
 from typing import List  # type hinting
@@ -151,9 +149,11 @@ class Fragannot:
             "(" + str(int(charge)) + ")" if int(charge) < 0 else "(+" + str(int(charge)) + ")"
             for charge in charges
         ]
+
         n_term_frags_with_charges = [
             n_term_frag + charge for n_term_frag in n_term_frags for charge in charges_str
         ]
+
         c_term_frags_with_charges = [
             c_term_frag + charge for c_term_frag in c_term_frags for charge in charges_str
         ]
@@ -262,6 +262,8 @@ class Fragannot:
 
         theo_frag = [[k, v] for k, v in sorted(theo_frag.items(), key=lambda item: item[1])]
 
+        re_term = re.compile(r"^t:|:t")
+
         iter_2, last_match = tee(iter(theo_frag))
 
         d = {}
@@ -292,7 +294,20 @@ class Fragannot:
 
             fragment_theoretical_nmatch.append(len(d[i]))
             if len(d[i]) > 0:
-                closest = min(d[i], key=lambda t: t[2])
+
+                closest = None
+                for frag in d[i]:
+
+                    if re_term.search(frag[0]):  # Prioritize annotation of terminal ions
+                        closest = frag
+                        print(closest)
+                        break
+
+                if closest is None:
+                    closest = min(
+                        d[i], key=lambda t: t[2]
+                    )  # add the only the annotation with the lowest mass error
+
                 fragment_theoretical_code.append(closest[0])
                 fragment_theoretical_mz.append(closest[1])
             else:
