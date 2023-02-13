@@ -14,54 +14,89 @@ __date = "2023-02-07"
 
 class JSONConverter:
     """
+    Convert JSON files to different (file) formats.
+    Example usage:
+        json_file = "data.json"
+        converter = JSONConverter()
+        converter.load(json_file)
+        dataframes = converter.to_dataframes()
+        converter.to_csv(prefix = "data")
+        dataframes[0].head()
+        dataframes[1].head()
     """
 
-    def __init__(self) -> None:
+    def __init__(self, input: Union[str, BinaryIO] = None) -> None:
         """
+        Constructor.
+        If 'input' is provided, self.load(input) will be called.
         """
         self.data = None
+        if input is not None:
+            self.load(input)
 
     def load(self, input: Union[str, BinaryIO]) -> Dict:
         """
+        Load JSON from file or filestream (auto-detect).
         """
 
         if os.path.isfile(input):
-            self.data = load_from_file(input)
+            self.data = self.load_from_file(input)
         else:
-            self.data = load_from_stream(input)
+            self.data = self.load_from_stream(input)
 
         return self.data
 
     def load_from_file(self, json_file: str) -> Dict:
         """
+        Load JSON from file.
         """
 
         with open(json_file, "r", encoding = "utf-8") as f:
-            data = json.load(f)
+            self.data = json.load(f)
             f.close()
 
-        return data
+        return self.data
 
     def load_from_stream(self, json_filestream: BinaryIO) -> Dict:
         """
+        Load JSON from filestream.
         """
 
-        data = json.load(json_filestream)
+        self.data = json.load(json_filestream)
 
-        return data
+        return self.data
 
-    def to_csv(self, data: Dict = None, prefix: str = None) -> List[pd.DataFrame]:
+    def to_csv(self, prefix: str, data: Dict = None) -> List[pd.DataFrame]:
         """
+        Export JSON to CSV format.
         """
+
+        if data == None:
+            data = self.data
 
         dataframes = self.to_dataframes(data)
-        dataframes[0].to_csv(prefix + "_fragment.csv")
-        dataframes[1].to_csv(prefix + "_spectrum.csv")
+        dataframes[0].to_csv(prefix + "_fragment.csv", index = False)
+        dataframes[1].to_csv(prefix + "_spectrum.csv", index = False)
+
+        return dataframes
+
+    def to_excel(self, prefix: str, data: Dict = None) -> List[pd.DataFrame]:
+        """
+        Export JSON to EXCEL format.
+        """
+
+        if data == None:
+            data = self.data
+
+        dataframes = self.to_dataframes(data)
+        dataframes[0].to_excel(prefix + "_fragment.xlsx")
+        dataframes[1].to_excel(prefix + "_spectrum.xlsx")
 
         return dataframes
 
     def to_dataframes(self, data: Dict = None) -> List[pd.DataFrame]:
         """
+        Re-format JSON to dataframes.
         """
 
         if data == None:
@@ -176,6 +211,7 @@ class JSONConverter:
 
     def __get_spectrum_id(self, entry: Dict) -> Union[int, float, str]:
         """
+        Get the spectrum ID if it exists.
         """
 
         if "spectrum_id" in entry:
@@ -185,6 +221,7 @@ class JSONConverter:
 
     def __get_identification_score(self, entry: Dict) -> Union[int, float, str]:
         """
+        Get the identification score if it exists.
         """
 
         if "identification_score" in entry:
@@ -194,6 +231,7 @@ class JSONConverter:
 
     def __get_ambiguity(self, entry_annotation: Dict, index: int) -> Union[int, float, str]:
         """
+        Get the ambiguity if information is available.
         """
 
         if "matches_count" in entry_annotation:
@@ -203,13 +241,14 @@ class JSONConverter:
 
     def __find_explained_by_aa(self, fragments: List[str], intensities: List[float]) -> float:
         """
+        Calculate the explained intensity by single amino acids.
         """
 
         intensities_single_aa = 0
 
         for i, frag in enumerate(fragments):
             if frag is not None and "t" not in frag:
-                start, end, ion_cap_start, ion_cap_end, charge, formula = parse_fragment_code(frag)
+                start, end, ion_cap_start, ion_cap_end, charge, formula = self.__parse_fragment_code(frag)
                 if start == end:
                     intensities_single_aa += intensities[i]
 
@@ -217,6 +256,7 @@ class JSONConverter:
 
     def __find_explained_precursor(self, entry: Dict) -> Union[int, float]:
         """
+        Calculate the explained intensity by the precursor.
         """
 
         precursor_intensity = 0
@@ -231,6 +271,7 @@ class JSONConverter:
 
     def __find_top3_most_intense_internal_ions(self, fragments: List[str], intensities: List[float], pep_seq: str) -> List[List[str]]:
         """
+        Get the top 3 most intense internal ions.
         """
 
         mapping = dict()
@@ -245,7 +286,7 @@ class JSONConverter:
         top_3_sequences = []
 
         for code in top_3_codes:
-            start, end, ion_cap_start, ion_cap_end, charge, formula = parse_fragment_code(code)
+            start, end, ion_cap_start, ion_cap_end, charge, formula = self.__parse_fragment_code(code)
             top_3_sequences.append(pep_seq[start-1:end])
 
         if len(top_3_codes) < 3:
@@ -265,6 +306,7 @@ class JSONConverter:
 
     def __calculate_internal_terminal_non_annotated_ions(self, fragments: List[str], intensities: List[float]) -> Dict:
         """
+        Calculate ion counts and frequencies.
         """
 
         # Number of different ion types
@@ -298,13 +340,14 @@ class JSONConverter:
 
     def __parse_modfication(self, proforma: str, start: int, end: int) -> str:
         """
+        Get modification string.
         """
 
         # Finds the modifications in the proforma string
         pattern = r"\[([\+?\-?A-Za-z0-9_\.?0-9]+)\]"
         mods = re.findall(pattern, proforma)
 
-        positions = parse_modification_positions(proforma)
+        positions = self.__parse_modification_positions(proforma)
 
         modifications = ""
 
@@ -317,6 +360,7 @@ class JSONConverter:
 
     def __parse_modification_positions(self, seq: str) -> List[int]:
         """
+        Get positions of the modifications.
         """
 
         i = 1
@@ -343,6 +387,7 @@ class JSONConverter:
 
     def __parse_fragment_code(self, fragment_code: str):
         """
+        Parse the fragment code.
         """
 
         # test if fragment code format is valid*
