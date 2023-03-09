@@ -13,6 +13,7 @@ from pyteomics import parser
 import logging
 import logging.config
 import os
+import ms_deisotope
 
 # Local
 from ._version import __version__
@@ -35,6 +36,7 @@ class Fragannot:
         charges,
         losses,
         file_format,
+        deisotope,
         write_file=True,
     ):
         """
@@ -73,10 +75,17 @@ class Fragannot:
 
             if (i + 1) % 100 == 0:
                 self.logger.info(f"{i + 1} spectra annotated")
-            theoretical_fragment_code = self.compute_theoretical_fragments2(
+
+            if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
+                charges_used = range(1, abs(psm.get_precursor_charge()), 1)
+            else:
+                charges_used = charges
+            print(charges)
+
+            theoretical_fragment_code = self.compute_theoretical_fragments(
                 sequence_length=len(psm.peptidoform.sequence),
                 fragment_types=fragment_types,
-                charges=charges,
+                charges=charges_used,
                 neutral_losses=losses,
             )
 
@@ -84,12 +93,20 @@ class Fragannot:
                 f: self.theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
             }
 
+            if deisotope:  # deisotoping TODO check desotoping method to optimize
+                mzs, intensities = self.deisotope_peak_list(
+                    psm.spectrum["mz"].tolist(), psm.spectrum["intensity"].tolist()
+                )
+            else:
+                mzs = psm.spectrum["mz"]
+                intensities = psm.spectrum["intensity"].tolist()
+
             annotation_mz, annotation_code, annotation_count = self.match_fragments(
-                psm.spectrum["mz"], theoretical_fragment_dict, tolerance=tolerance
+                mzs, theoretical_fragment_dict, tolerance=tolerance
             )
 
-            psm.spectrum["intensity"] = psm.spectrum["intensity"].tolist()
-            psm.spectrum["mz"] = psm.spectrum["mz"].tolist()
+            psm.spectrum["intensity"] = intensities
+            psm.spectrum["mz"] = mzs
             psm.spectrum["theoretical_mz"] = annotation_mz
             psm.spectrum["theoretical_code"] = annotation_code
             psm.spectrum["matches_count"] = annotation_count
@@ -102,6 +119,7 @@ class Fragannot:
                     "spectrum_id": psm.spectrum_id,
                     "identification_score": psm.score,
                     "rank": psm.rank,
+                    # "precursor_charge": int(psm.get_precursor_charge()),
                     "precursor_intensity": 666,
                 }
             )
@@ -118,11 +136,20 @@ class Fragannot:
 
     # Function
 
-    def compute_theoretical_fragments2(
+    def deisotope_peak_list(self, mzs, intensities):
+        peaks = ms_deisotope.deconvolution.utils.prepare_peaklist(zip(mzs, intensities))
+        deconvoluted_peaks, targeted = ms_deisotope.deconvolute_peaks(
+            peaks, averagine=ms_deisotope.peptide, scorer=ms_deisotope.MSDeconVFitter(10.0), verbose=True
+        )
+        mzs = [p.mz for p in deconvoluted_peaks.peaks]
+        intensities = [p.intensity for p in deconvoluted_peaks.peaks]
+        return mzs, intensities
+
+    def compute_theoretical_fragments(
         self,
         sequence_length: int,
         fragment_types: List[str],
-        charges: List[int] = [1],
+        charges: List[int] = [-1],
         neutral_losses: List[str] = [],
         internal: bool = True,
     ) -> List[str]:
@@ -300,7 +327,6 @@ class Fragannot:
 
                     if re_term.search(frag[0]):  # Prioritize annotation of terminal ions
                         closest = frag
-                        print(closest)
                         break
 
                 if closest is None:
@@ -370,7 +396,7 @@ def main(parser=argparse.ArgumentParser()):
         "-c",
         "--charges",
         type=str,
-        default=["+1"],
+        default="auto",
         nargs="+",
         required=False,
         help="list of fragment charges to be considered",
@@ -387,6 +413,16 @@ def main(parser=argparse.ArgumentParser()):
         nargs="+",
         required=False,
         help="list molecular formula to be considered a possible neutral loss (e.g H20 for water loss)",
+    )
+
+    parser.add_argument(
+        "-d",
+        "--deisotope",
+        type=bool,
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        required=False,
+        help="Whether or not to perform deisotoping of the spectra",
     )
 
     args = parser.parse_args()
@@ -430,6 +466,7 @@ def main(parser=argparse.ArgumentParser()):
             charges=args.charges,
             losses=args.losses,
             file_format=args.format,
+            deisotope=args.deisotope,
         )
 
 
