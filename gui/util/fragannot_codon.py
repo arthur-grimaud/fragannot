@@ -150,7 +150,7 @@ def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List
 
     return mzs, intensities
 
-@codon.jit(pyvar=["constant"])
+@codon.jit(pyvars=["constant"])
 def compute_theoretical_fragments(
     sequence_length: int,
     fragment_types: List[str],
@@ -229,7 +229,7 @@ def compute_theoretical_fragments(
 
     return n_term_frags_with_nl + c_term_frags_with_nl + internal_frags_with_nl
 
-@codon.jit(pyvar=["parse_fragment_code", "parser", "mass", "constant"])
+@codon.jit(pyvars=["parse_fragment_code", "parser", "mass", "constant"])
 def theoretical_mass_to_charge(fragment_code: str, peptidoform) -> float:
 
     start, end, ion_cap_start, ion_cap_end, charge, formula = parse_fragment_code(fragment_code)
