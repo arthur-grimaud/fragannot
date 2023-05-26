@@ -1,61 +1,54 @@
 # Dependencies
-import argparse
-from argparse import ArgumentError
-from logging import warning
 import json
 import numpy as np
 import re
-from typing import List  # type hinting
 from pyteomics import mass
 from itertools import tee
 from random import uniform
 from pyteomics import parser
-import logging
-import logging.config
 import os
+import ms_deisotope
 
-# Local
+# type hinting
+from typing import List
+from typing import Dict
+from typing import Any
+
 from fragannot import constant
 from fragannot.parser import Parser as Parser
 
-# codon optimizer
 import codon
 
-class Fragannot:
-
+class FragannotCodon:
     def __init__(self):
         pass
 
     def fragment_annotation(
         self,
-        ident_file,
-        spectra_file,
-        tolerance,
-        fragment_types,
-        charges,
-        losses,
-        file_format,
-        write_file = True):
+        ident_file: str,
+        spectra_file: str,
+        tolerance: float,
+        fragment_types: List[str],
+        charges: List[str],
+        losses: List[str],
+        file_format: str,
+        deisotope: bool,
+        write_file: bool = True) -> List[Dict[str, Any]]:
 
-        return fragment_annotation(ident_file,
-                                   spectra_file,
-                                   tolerance,
-                                   fragment_types,
-                                   charges,
-                                   losses,
-                                   file_format,
-                                   write_file)
+        return fragment_annotation(ident_file, spectra_file, tolerance,
+                                   fragment_types, charges, losses, file_format,
+                                   deisotope, write_file)
 
-# Fragannot
 def fragment_annotation(
-    ident_file,
-    spectra_file,
-    tolerance,
-    fragment_types,
-    charges,
-    losses,
-    file_format,
-    write_file = True):
+    ident_file: str,
+    spectra_file: str,
+    tolerance: float,
+    fragment_types: List[str],
+    charges: List[str],
+    losses: List[str],
+    file_format: str,
+    deisotope: bool,
+    write_file: bool = True) -> List[Dict[str, Any]]:
     """
     Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -92,10 +85,16 @@ def fragment_annotation(
 
         if (i + 1) % 100 == 0:
             print(f"{i + 1} spectra annotated")
-        theoretical_fragment_code = compute_theoretical_fragments2(
+
+        if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
+            charges_used = range(1, abs(psm.get_precursor_charge()), 1)
+        else:
+            charges_used = charges
+
+        theoretical_fragment_code = compute_theoretical_fragments(
             sequence_length = len(psm.peptidoform.sequence),
             fragment_types = fragment_types,
-            charges = charges,
+            charges = charges_used,
             neutral_losses = losses,
         )
 
@@ -103,12 +102,20 @@ def fragment_annotation(
             f: theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
         }
 
-        annotation_mz, annotation_code, annotation_count = smatch_fragments(
-            psm.spectrum["mz"], theoretical_fragment_dict, tolerance = tolerance
+        if deisotope:  # deisotoping TODO check desotoping method to optimize
+            mzs, intensities = deisotope_peak_list(
+                psm.spectrum["mz"].tolist(), psm.spectrum["intensity"].tolist()
+            )
+        else:
+            mzs = psm.spectrum["mz"]
+            intensities = psm.spectrum["intensity"].tolist()
+
+        annotation_mz, annotation_code, annotation_count = match_fragments(
+            mzs, theoretical_fragment_dict, tolerance = tolerance
         )
 
-        psm.spectrum["intensity"] = psm.spectrum["intensity"].tolist()
-        psm.spectrum["mz"] = psm.spectrum["mz"].tolist()
+        psm.spectrum["intensity"] = intensities
+        psm.spectrum["mz"] = mzs
         psm.spectrum["theoretical_mz"] = annotation_mz
         psm.spectrum["theoretical_code"] = annotation_code
         psm.spectrum["matches_count"] = annotation_count
@@ -121,6 +128,7 @@ def fragment_annotation(
                 "spectrum_id": psm.spectrum_id,
                 "identification_score": psm.score,
                 "rank": psm.rank,
+                # "precursor_charge": int(psm.get_precursor_charge()),
                 "precursor_intensity": 666,
             }
         )
@@ -132,14 +140,23 @@ def fragment_annotation(
 
     return psms_json
 
-@codon.jit(pyvars=["constant"])
-def compute_theoretical_fragments2(
+def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List[float], List[float]]:
+    peaks = ms_deisotope.deconvolution.utils.prepare_peaklist(zip(mzs, intensities))
+    deconvoluted_peaks, targeted = ms_deisotope.deconvolute_peaks(
+        peaks, averagine = ms_deisotope.peptide, scorer = ms_deisotope.MSDeconVFitter(10.0), verbose = True
+    )
+    mzs = [p.mz for p in deconvoluted_peaks.peaks]
+    intensities = [p.intensity for p in deconvoluted_peaks.peaks]
+
+    return mzs, intensities
+
+@codon.jit(pyvar=["constant"])
+def compute_theoretical_fragments(
     sequence_length: int,
     fragment_types: List[str],
-    charges: List[int] = [1],
+    charges: List[int] = [-1],
     neutral_losses: List[str] = [],
-    internal: bool = True,
-) -> List[str]:
+    internal: bool = True) -> List[str]:
 
     ion_directions = constant.ion_direction
 
@@ -212,8 +229,8 @@ def compute_theoretical_fragments2(
 
     return n_term_frags_with_nl + c_term_frags_with_nl + internal_frags_with_nl
 
-@codon.jit(pyvars=["parse_fragment_code", "parser", "mass", "constant"])
-def theoretical_mass_to_charge(fragment_code, peptidoform):
+@codon.jit(pyvar=["parse_fragment_code", "parser", "mass", "constant"])
+def theoretical_mass_to_charge(fragment_code: str, peptidoform) -> float:
 
     start, end, ion_cap_start, ion_cap_end, charge, formula = parse_fragment_code(fragment_code)
 
@@ -226,7 +243,7 @@ def theoretical_mass_to_charge(fragment_code, peptidoform):
             mods.extend([m.mass for m in mod])
 
     # mass AA sequence
-    ps = parser.parse("".join(sequence), show_unmodified_termini = True)
+    ps = parser.parse("".join(sequence), show_unmodified_termini=True)
     P = mass.calculate_mass(parsed_sequence=ps)
     # mass modifications
     M = sum(mods)
@@ -269,14 +286,8 @@ def parse_fragment_code(fragment_code: str):
 
     return start, end, ion_cap_start, ion_cap_end, charge, formula
 
-@codon.jit
-def matching(mz1, mz2, tol):
-    if abs(mz1 - mz2) <= tol:
-        return True
-    return False
-
-@codon.jit(pyvars=["re", "tee", "matching"])
-def match_fragments(exp_mz, theo_frag, tolerance):
+@codon.jit(pyvars=["re", "tee"])
+def match_fragments(exp_mz, theo_frag, tolerance: float):
 
     theo_frag = [[k, v] for k, v in sorted(theo_frag.items(), key = lambda item: item[1])]
 
@@ -299,7 +310,7 @@ def match_fragments(exp_mz, theo_frag, tolerance):
             # print(j)
             if j[1] is None:
                 break
-            if matching(i, j[1], tolerance):
+            if abs(i - j[1]) <= tolerance:
                 k = [j[0], j[1], abs(i - j[1])]
 
                 d[i].append(k)
@@ -318,12 +329,11 @@ def match_fragments(exp_mz, theo_frag, tolerance):
 
                 if re_term.search(frag[0]):  # Prioritize annotation of terminal ions
                     closest = frag
-                    print(closest)
                     break
 
             if closest is None:
                 closest = min(
-                    d[i], key=lambda t: t[2]
+                    d[i], key = lambda t: t[2]
                 )  # add the only the annotation with the lowest mass error
 
             fragment_theoretical_code.append(closest[0])
