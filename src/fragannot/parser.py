@@ -163,7 +163,6 @@ class Parser:
             for psm in mzid.MzIdentML(file_path):
 
                 spectrumID = psm["spectrumID"]
-                print(spectrumID)
                 for spectrum_identification in psm["SpectrumIdentificationItem"]:
                     rank = spectrum_identification["rank"]
                     charge_state = spectrum_identification["chargeState"]
@@ -204,7 +203,6 @@ class Parser:
 
                         # add charge state of precursor
                         sequence = sequence + "/" + str(charge_state)
-                        print(sequence)
 
                         result.append(
                             PSM(
