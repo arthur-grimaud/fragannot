@@ -15,8 +15,8 @@ import logging.config
 import os
 
 # Local
-from Fragannot import constant
-from Fragannot.parser import Parser as Parser
+from fragannot import constant
+from fragannot.parser import Parser as Parser
 
 # codon optimizer
 import codon
