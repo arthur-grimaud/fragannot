@@ -20,7 +20,6 @@ RUN git fetch --all
 RUN git checkout standalone-gui
 
 RUN /bin/bash -c "$(curl -fsSL https://exaloop.io/install.sh)"
-RUN pip3 install codon-jit
 RUN pip3 install -r requirements.txt
 RUN pip3 install -r developer_requirements.txt
 

@@ -1,3 +1,4 @@
+codon-jit
 numpy
 pandas
 openpyxl
