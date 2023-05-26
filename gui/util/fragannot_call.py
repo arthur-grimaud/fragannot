@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from util.fragannot_codon import FragannotCodon
+#from util.fragannot_codon import FragannotCodon
+from fragannot import Fragannot
 
 import os
 import random
@@ -27,7 +28,8 @@ def fragannot_call(spectrum_file: BinaryIO,
         f2.write(identifications_file.getbuffer())
 
     # run fragannot
-    frag = FragannotCodon()
+    #frag = FragannotCodon()
+    frag = Fragannot()
     fragannot_dict = frag.fragment_annotation(output_name_prefix + identifications_file.name,
                                               output_name_prefix + spectrum_file.name,
                                               tolerance,

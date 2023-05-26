@@ -151,6 +151,7 @@ def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List
 
     return mzs, intensities
 
+#@codon.jit(pyvars=["constant"])
 @codon.jit(debug=True)
 def compute_theoretical_fragments(
     sequence_length: int,
@@ -159,6 +160,7 @@ def compute_theoretical_fragments(
     neutral_losses: List[str] = [],
     internal: bool = True) -> List[str]:
 
+    #ion_directions = constant.ion_direction
     ion_directions = {
         "a": "n-term",
         "b": "n-term",
