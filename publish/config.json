@@ -1,11 +1,11 @@
 {
-  "author": "AG",
+  "author": "eubic ms 2023 hackathon team (to update)",
   "package_name_override": "fragannot",
   "email": "",
   "description": "A python CLI app for fragment annotation",
   "url": "",
   "python_version": "3.8",
-  "version": "1.0.56",
+  "version": "0.60",
   "scripts": [
     "fragannot = fragannot:main"
   ]
