@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # needs newest version of fragannot installed
-from fragannot import Fragannot
+from fragannot_codon import Fragannot
 
 import os
 import random

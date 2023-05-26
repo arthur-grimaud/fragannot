@@ -8,6 +8,7 @@ LABEL maintainer="micha.birklbauer@gmail.com"
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
+    curl \
     git \
     python3-distutils \
     python3-lxml \
