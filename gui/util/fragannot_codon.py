@@ -150,7 +150,7 @@ def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List
 
     return mzs, intensities
 
-@codon.jit(pyvars=["constant"])
+@codon.jit(pyvars=["constant"], debug=True)
 def compute_theoretical_fragments(
     sequence_length: int,
     fragment_types: List[str],
