@@ -140,7 +140,7 @@ def fragment_annotation(
 
     return psms_json
 
-def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List[float], List[float]]:
+def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List[float]]:
     peaks = ms_deisotope.deconvolution.utils.prepare_peaklist(zip(mzs, intensities))
     deconvoluted_peaks, targeted = ms_deisotope.deconvolute_peaks(
         peaks, averagine = ms_deisotope.peptide, scorer = ms_deisotope.MSDeconVFitter(10.0), verbose = True

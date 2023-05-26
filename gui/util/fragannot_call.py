@@ -15,6 +15,7 @@ def fragannot_call(spectrum_file: BinaryIO,
                    fragment_types: List[str],
                    charges: List[str],
                    losses: List[str],
+                   deisotope: bool,
                    file_format: str = "infer") -> Dict:
 
     output_name_prefix = datetime.now().strftime("%b-%d-%Y_%H-%M-%S") + "_" + str(random.randint(10000, 99999))
@@ -34,6 +35,7 @@ def fragannot_call(spectrum_file: BinaryIO,
                                               charges,
                                               losses,
                                               file_format,
+                                              deisotope,
                                               write_file = False)
 
     # remove written files

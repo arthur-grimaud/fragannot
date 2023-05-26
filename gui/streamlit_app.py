@@ -61,6 +61,10 @@ def main_page():
                                 value = 0.02,
                                 help = "Fragment mass tolerance in Dalton.")
 
+    deisotope = st.checkbox("Deisotope spectra",
+                            value = True,
+                            help = "Deisotope uploaded spectra or not.")
+
     fions_text = st.markdown("Select which ion types your applied fragmentation method produced:")
 
     # START Fragment types - List of booleans
@@ -124,7 +128,8 @@ def main_page():
                                                     float(tolerance),
                                                     fragannot_call_ion_selection,
                                                     charges,
-                                                    losses)
+                                                    losses,
+                                                    deisotope)
                             converter = JSONConverter()
                             st.session_state["result"] = result
                             st.session_state["dataframes"] = converter.to_dataframes(data = result)
