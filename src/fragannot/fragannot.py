@@ -80,7 +80,6 @@ class Fragannot:
                 charges_used = range(1, abs(psm.get_precursor_charge()), 1)
             else:
                 charges_used = charges
-            print(charges)
 
             theoretical_fragment_code = self.compute_theoretical_fragments(
                 sequence_length=len(psm.peptidoform.sequence),
