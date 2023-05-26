@@ -48,8 +48,8 @@ def main_page():
     header = st.subheader("Data Import")
 
     spectrum_file = st.file_uploader("Upload spectrum file:",
-                                     type = ["raw", "mgf"],
-                                     help = "Upload a spectrum file to be analyzed in .raw of .mgf format."
+                                     type = ["mzml", "mgf"],
+                                     help = "Upload a spectrum file to be analyzed in .mzml or .mgf format."
                                     )
 
     identifications_file = st.file_uploader("Upload identification file:",
@@ -121,22 +121,22 @@ def main_page():
         if spectrum_file is not None and identifications_file is not None:
             with st.spinner("Fragannot is running..."):
                 with st.expander("Show logging info:"):
-                    with st_stdout("info"):
-                        try:
-                            result = fragannot_call(spectrum_file,
-                                                    identifications_file,
-                                                    float(tolerance),
-                                                    fragannot_call_ion_selection,
-                                                    charges,
-                                                    losses,
-                                                    deisotope)
-                            converter = JSONConverter()
-                            st.session_state["result"] = result
-                            st.session_state["dataframes"] = converter.to_dataframes(data = result)
-                            status_1 = 0
-                        except Exception as e:
-                            this_e = st.exception(e)
-                            status_1 = 1
+                    #with st_stdout("info"):
+                    try:
+                        result = fragannot_call(spectrum_file,
+                                                identifications_file,
+                                                float(tolerance),
+                                                fragannot_call_ion_selection,
+                                                charges,
+                                                losses,
+                                                deisotope)
+                        converter = JSONConverter()
+                        st.session_state["result"] = result
+                        st.session_state["dataframes"] = converter.to_dataframes(data = result)
+                        status_1 = 0
+                    except Exception as e:
+                        this_e = st.exception(e)
+                        status_1 = 1
             if status_1 == 0:
                 res_status_1 = st.success("Fragannot finished successfully!")
             else:
