@@ -204,7 +204,6 @@ class Parser:
 
                         # add charge state of precursor
                         sequence = sequence + "/" + str(charge_state)
-                        print(sequence)
 
                         result.append(
                             PSM(
