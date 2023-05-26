@@ -150,7 +150,7 @@ def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List
 
     return mzs, intensities
 
-@codon.jit(pyvars=["constant"], debug=True)
+@codon.jit(debug=True)
 def compute_theoretical_fragments(
     sequence_length: int,
     fragment_types: List[str],
@@ -158,7 +158,20 @@ def compute_theoretical_fragments(
     neutral_losses: List[str] = [],
     internal: bool = True) -> List[str]:
 
-    ion_directions = constant.ion_direction
+    ion_direction = {
+        "a": "n-term",
+        "b": "n-term",
+        "x": "c-term",
+        "y": "c-term",
+        "cdot": "n-term",
+        "c": "n-term",
+        "c-1": "n-term",
+        "c+1": "n-term",
+        "zdot": "c-term",
+        "z+1": "c-term",
+        "z+2": "c-term",
+        "z+3": "c-term",
+    }
 
     n_term_ions = [ion_type for ion_type in fragment_types if ion_directions[ion_type] == "n-term"]
     c_term_ions = [ion_type for ion_type in fragment_types if ion_directions[ion_type] == "c-term"]
