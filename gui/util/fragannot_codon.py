@@ -158,7 +158,7 @@ def compute_theoretical_fragments(
     neutral_losses: List[str] = [],
     internal: bool = True) -> List[str]:
 
-    ion_direction = {
+    ion_directions = {
         "a": "n-term",
         "b": "n-term",
         "x": "c-term",
