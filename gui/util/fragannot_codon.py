@@ -44,7 +44,7 @@ def fragment_annotation(
     spectra_file: str,
     tolerance: float,
     fragment_types: List[str],
-    charges: List[str],
+    charges: List[str] | str,
     losses: List[str],
     file_format: str,
     deisotope: bool,
@@ -94,8 +94,9 @@ def fragment_annotation(
         theoretical_fragment_code = compute_theoretical_fragments(
             sequence_length = len(psm.peptidoform.sequence),
             fragment_types = fragment_types,
-            charges = charges_used,
+            charges = [int(c) for c in charges_used],
             neutral_losses = losses,
+            True
         )
 
         theoretical_fragment_dict = {
