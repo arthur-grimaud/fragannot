@@ -96,7 +96,7 @@ def fragment_annotation(
             fragment_types = fragment_types,
             charges = [int(c) for c in charges_used],
             neutral_losses = losses,
-            True
+            internal = True
         )
 
         theoretical_fragment_dict = {
