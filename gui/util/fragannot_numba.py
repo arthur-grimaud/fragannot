@@ -151,7 +151,7 @@ def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List
 
     return mzs, intensities
 
-@jit
+@jit(nopython = True)
 def compute_theoretical_fragments(
     sequence_length: int,
     fragment_types: List[str],
@@ -213,7 +213,7 @@ def compute_theoretical_fragments(
         c_term_frag + nl for c_term_frag in c_term_frags_with_charges for nl in neutral_losses_str
     ]
 
-    internal_frags_with_nl = []
+    internal_frags_with_nl = ["" for x in range(0)]
 
     if internal:
         # internal fragments
