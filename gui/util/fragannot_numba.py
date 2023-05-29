@@ -18,6 +18,7 @@ from fragannot import constant
 from fragannot.parser import Parser as Parser
 
 from numba import jit
+from numba.typed import List as numbaList
 
 class FragannotNumba:
     def __init__(self):
@@ -74,7 +75,7 @@ def fragment_annotation(
     None
     """
 
-    P = Parser()
+    P = Parser(is_streamlit = True)
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
     i = 0
@@ -93,9 +94,9 @@ def fragment_annotation(
 
         theoretical_fragment_code = compute_theoretical_fragments(
             sequence_length = len(psm.peptidoform.sequence),
-            fragment_types = fragment_types,
-            charges = [int(c) for c in charges_used],
-            neutral_losses = losses,
+            fragment_types = numbaList(fragment_types),
+            charges = numbaList([int(c) for c in charges_used]),
+            neutral_losses = numbaList(losses),
             internal = True
         )
 
