@@ -63,11 +63,12 @@ STANDARD_SEARCHENGINE_SCORES = [
 
 
 class Parser:
-    def __init__(self):
+    def __init__(self, is_streamlit: bool = False):
         # Set up logging
         self.logger = logging.getLogger(__name__)
         self.spectra = None
         self.psm_list = None
+        self.is_streamlit = is_streamlit
 
     def read(self, raw_file, ident_file, file_format, max_rank=RANK_LIMIT):
         """Read and process raw file and identification file.
@@ -105,6 +106,8 @@ class Parser:
             self.logger.error(f"Couldn't read file. Exception:\n{traceback.format_exc()}")
 
         self.logger.info(f"Read {len(self.psm_list)} PSMs from identification file")
+        if self.is_streamlit:
+            print(f"Read {len(self.psm_list)} PSMs from identification file")
 
         count = 0
         for psm in self.psm_list:
@@ -114,6 +117,8 @@ class Parser:
                 count += 1
                 if count % 500 == 0:
                     self.logger.info(f"{count} spectra processed")
+                    if self.is_streamlit:
+                        print(f"{count} spectra processed")
 
             except KeyError:
                 self.logger.warning(f'SpectrumId - {psm["spectrum_id"]} not found')
