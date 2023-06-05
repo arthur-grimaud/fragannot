@@ -23,8 +23,7 @@ from numba.typed import List as numbaList
 import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
-
-import streamlit as st
+from stqdm import stqdm
 
 class FragannotNumba:
     def __init__(self, reserved_cores: int = 2):
@@ -82,16 +81,16 @@ def fragment_annotation(
     None
     """
 
-    print("Fragannot running using " + str(nr_used_cores) + " logical cores.")
+    print("Fragannot running using " + str(nr_used_cores) + " logical cores.\n")
 
     P = Parser(is_streamlit = True)
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
-    print("Annotating spectra in parallel...")
+    print("\nAnnotating spectra in parallel...\n")
 
-    p_psms = tqdm(list(enumerate(psms))) # tqdm is good for cli but bad for streamlit progress
-    p_result = Parallel(n_jobs = nr_used_cores, backend = "multiprocessing")(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
+    p_psms = stqdm(list(enumerate(psms))) # tqdm is good for cli but bad for streamlit progress
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
     psms_json = list(p_result)
 
