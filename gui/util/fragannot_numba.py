@@ -111,7 +111,7 @@ def calculate_ions_for_psms(index_psm,
     psm = index_psm[1]
 
     if (i + 1) % 100 == 0:
-        st.info(f"Annotated spectra in total: {i}", icon = ✅)
+        st.info(f"Annotated spectra in total: {i}", icon = "✅")
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
