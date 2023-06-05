@@ -88,7 +88,7 @@ def fragment_annotation(
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
     #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
-    p_psms = stqdm(psms, description = "Annotating spectra: ")
+    p_psms = stqdm(psms, desc = "Annotating spectra: ")
     p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
     psms_json = list(p_result)
