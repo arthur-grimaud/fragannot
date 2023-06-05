@@ -55,7 +55,8 @@ def fragment_annotation(
     file_format: str,
     deisotope: bool,
     write_file: bool = True,
-    nr_used_cores: int = 1) -> List[Dict[str, Any]]:
+    nr_used_cores: int = 1,
+    micro_batch: bool = True) -> List[Dict[str, Any]]:
     """
     Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -89,10 +90,25 @@ def fragment_annotation(
 
     print("\nAnnotating spectra in parallel...\n")
 
-    p_psms = stqdm(list(enumerate(psms))) # tqdm is good for cli but bad for streamlit progress
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
-
-    psms_json = list(p_result)
+    if micro_batch:
+        i = 0
+        still_spectra_available = True
+        psms_json = []
+        while still_spectra_available:
+            if (i + 1) % 100 == 0:
+                print(f"Annotated spectra in total: {i}")
+            if i + 100 < len(psms):
+                current_batch = psms[i:i+100]
+            else:
+                current_batch = psms[i:len(psms)]
+                still_spectra_available = False
+            p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in current_batch)
+            psms_json += list(p_result)
+            i += 100
+    else:
+        p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
+        p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
+        psms_json = list(p_result)
 
     if write_file:
         with open(P.output_fname, "w", encoding = "utf8") as f:
@@ -100,18 +116,12 @@ def fragment_annotation(
 
     return psms_json
 
-def calculate_ions_for_psms(index_psm,
+def calculate_ions_for_psms(psm,
                             tolerance: float,
                             fragment_types: List[str],
                             charges: List[str] | str,
                             losses: List[str],
                             deisotope: bool) -> Dict[str, Any]:
-
-    i = index_psm[0]
-    psm = index_psm[1]
-
-    if (i + 1) % 100 == 0:
-        print(f"Annotated spectra in total: {i}")
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
