@@ -20,9 +20,13 @@ from fragannot.parser import Parser as Parser
 from numba import jit
 from numba.typed import List as numbaList
 
+import multiprocessing
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
 class FragannotNumba:
     def __init__(self):
-        pass
+        self.nr_used_cores = multiprocessing.cpu_count() - 2
 
     def fragment_annotation(
         self,
@@ -38,7 +42,7 @@ class FragannotNumba:
 
         return fragment_annotation(ident_file, spectra_file, tolerance,
                                    fragment_types, charges, losses, file_format,
-                                   deisotope, write_file)
+                                   deisotope, write_file, self.nr_used_cores)
 
 def fragment_annotation(
     ident_file: str,
@@ -49,7 +53,8 @@ def fragment_annotation(
     losses: List[str],
     file_format: str,
     deisotope: bool,
-    write_file: bool = True) -> List[Dict[str, Any]]:
+    write_file: bool = True,
+    nr_used_cores: int = 1) -> List[Dict[str, Any]]:
     """
     Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -78,69 +83,68 @@ def fragment_annotation(
     P = Parser(is_streamlit = True)
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
-    i = 0
 
-    psms_json = []
+    p_psms = tqdm(psms)
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
-    for psm in psms:
-
-        if (i + 1) % 100 == 0:
-            print(f"{i + 1} spectra annotated")
-
-        if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
-            charges_used = range(1, abs(psm.get_precursor_charge()), 1)
-        else:
-            charges_used = charges
-
-        theoretical_fragment_code = compute_theoretical_fragments(
-            sequence_length = len(psm.peptidoform.sequence),
-            fragment_types = numbaList(fragment_types),
-            charges = numbaList([int(c) for c in charges_used]),
-            neutral_losses = numbaList(losses),
-            internal = True
-        )
-
-        theoretical_fragment_dict = {
-            f: theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
-        }
-
-        if deisotope:  # deisotoping TODO check desotoping method to optimize
-            mzs, intensities = deisotope_peak_list(
-                psm.spectrum["mz"].tolist(), psm.spectrum["intensity"].tolist()
-            )
-        else:
-            mzs = psm.spectrum["mz"]
-            intensities = psm.spectrum["intensity"].tolist()
-
-        annotation_mz, annotation_code, annotation_count = match_fragments(
-            mzs, theoretical_fragment_dict, tolerance = tolerance
-        )
-
-        psm.spectrum["intensity"] = intensities
-        psm.spectrum["mz"] = mzs
-        psm.spectrum["theoretical_mz"] = annotation_mz
-        psm.spectrum["theoretical_code"] = annotation_code
-        psm.spectrum["matches_count"] = annotation_count
-
-        psms_json.append(
-            {
-                "sequence": psm.peptidoform.sequence,
-                "proforma": psm.peptidoform.proforma,
-                "annotation": psm.spectrum,
-                "spectrum_id": psm.spectrum_id,
-                "identification_score": psm.score,
-                "rank": psm.rank,
-                # "precursor_charge": int(psm.get_precursor_charge()),
-                "precursor_intensity": 666,
-            }
-        )
-        i += 1
+    psms_json = list(p_result)
 
     if write_file:
         with open(P.output_fname, "w", encoding="utf8") as f:
             json.dump(psms_json, f)
 
     return psms_json
+
+def calculate_ions_for_psms(psm,
+                            tolerance: float,
+                            fragment_types: List[str],
+                            charges: List[str] | str,
+                            losses: List[str],
+                            deisotope: bool) -> Dict[str, Any]:
+
+    if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
+        charges_used = range(1, abs(psm.get_precursor_charge()), 1)
+    else:
+        charges_used = charges
+
+    theoretical_fragment_code = compute_theoretical_fragments(
+        sequence_length = len(psm.peptidoform.sequence),
+        fragment_types = numbaList(fragment_types),
+        charges = numbaList([int(c) for c in charges_used]),
+        neutral_losses = numbaList(losses),
+        internal = True
+    )
+
+    theoretical_fragment_dict = {
+        f: theoretical_mass_to_charge(f, psm.peptidoform) for f in theoretical_fragment_code
+    }
+
+    if deisotope:  # deisotoping TODO check desotoping method to optimize
+        mzs, intensities = deisotope_peak_list(
+            psm.spectrum["mz"].tolist(), psm.spectrum["intensity"].tolist()
+        )
+    else:
+        mzs = psm.spectrum["mz"]
+        intensities = psm.spectrum["intensity"].tolist()
+
+    annotation_mz, annotation_code, annotation_count = match_fragments(
+        mzs, theoretical_fragment_dict, tolerance = tolerance
+    )
+
+    psm.spectrum["intensity"] = intensities
+    psm.spectrum["mz"] = mzs
+    psm.spectrum["theoretical_mz"] = annotation_mz
+    psm.spectrum["theoretical_code"] = annotation_code
+    psm.spectrum["matches_count"] = annotation_count
+
+    return {"sequence": psm.peptidoform.sequence,
+            "proforma": psm.peptidoform.proforma,
+            "annotation": psm.spectrum,
+            "spectrum_id": psm.spectrum_id,
+            "identification_score": psm.score,
+            "rank": psm.rank,
+            # "precursor_charge": int(psm.get_precursor_charge()),
+            "precursor_intensity": 666}
 
 def deisotope_peak_list(mzs: List[float], intensities: List[float]) -> List[List[float]]:
     peaks = ms_deisotope.deconvolution.utils.prepare_peaklist(zip(mzs, intensities))
