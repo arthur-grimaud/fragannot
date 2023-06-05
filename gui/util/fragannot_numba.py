@@ -82,15 +82,16 @@ def fragment_annotation(
     None
     """
 
-    print("Fragannot running using: " + str(nr_used_cores) + " logical cores.")
+    print("Fragannot running using " + str(nr_used_cores) + " logical cores.")
 
     P = Parser(is_streamlit = True)
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
-    #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
-    p_psms = list(enumerate(psms))
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
+    print("Annotating spectra in parallel...")
+
+    p_psms = tqdm(list(enumerate(psms))) # tqdm is good for cli but bad for streamlit progress
+    p_result = Parallel(n_jobs = nr_used_cores, backend = "multiprocessing")(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
     psms_json = list(p_result)
 
@@ -111,7 +112,7 @@ def calculate_ions_for_psms(index_psm,
     psm = index_psm[1]
 
     if (i + 1) % 100 == 0:
-        st.info(f"Annotated spectra in total: {i}", icon = "✅")
+        print(f"Annotated spectra in total: {i}")
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
