@@ -95,8 +95,7 @@ def fragment_annotation(
         still_spectra_available = True
         psms_json = []
         while still_spectra_available:
-            if (i + 1) % 100 == 0:
-                print(f"Annotated spectra in total: {i}")
+            print(f"Annotated spectra in total: {i}")
             if i + 100 < len(psms):
                 current_batch = psms[i:i+100]
             else:
