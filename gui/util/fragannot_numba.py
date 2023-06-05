@@ -91,7 +91,8 @@ def fragment_annotation(
     message = st.empty()
 
     #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, i, message) for i, psm in enumerate(psms))
+    p_psms = list(enumerate(psms))
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, i, message) for psm in p_psms)
 
     psms_json = list(p_result)
 
@@ -101,17 +102,19 @@ def fragment_annotation(
 
     return psms_json
 
-def calculate_ions_for_psms(psm,
+def calculate_ions_for_psms(index_psm,
                             tolerance: float,
                             fragment_types: List[str],
                             charges: List[str] | str,
                             losses: List[str],
                             deisotope: bool,
-                            i: int,
                             message_box) -> Dict[str, Any]:
 
     #if (i + 1) % 100 == 0:
     #    print(f"{i + 1} spectra annotated")
+
+    i = index_psm[0]
+    psm = index_psm[1]
 
     message_box.success(f"Annotated spectra in total: {i}")
 
