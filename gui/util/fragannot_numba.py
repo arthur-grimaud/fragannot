@@ -88,11 +88,9 @@ def fragment_annotation(
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
-    message = st.empty()
-
     #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
     p_psms = list(enumerate(psms))
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, message) for psm in p_psms)
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
     psms_json = list(p_result)
 
@@ -107,16 +105,13 @@ def calculate_ions_for_psms(index_psm,
                             fragment_types: List[str],
                             charges: List[str] | str,
                             losses: List[str],
-                            deisotope: bool,
-                            message_box) -> Dict[str, Any]:
-
-    #if (i + 1) % 100 == 0:
-    #    print(f"{i + 1} spectra annotated")
+                            deisotope: bool) -> Dict[str, Any]:
 
     i = index_psm[0]
     psm = index_psm[1]
 
-    message_box.success(f"Annotated spectra in total: {i}")
+    if (i + 1) % 100 == 0:
+        st.info(f"Annotated spectra in total: {i}", icon = ✅)
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
