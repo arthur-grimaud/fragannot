@@ -84,6 +84,8 @@ def fragment_annotation(
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
+    print("Fragannot running using: " + str(nr_used_cores) + " logical cores.")
+
     p_psms = tqdm(psms)
     p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
