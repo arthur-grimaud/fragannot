@@ -26,6 +26,7 @@ from tqdm import tqdm
 from stqdm import stqdm
 
 class FragannotNumba:
+    # set CPU cores here
     def __init__(self, reserved_cores: int = 2):
         self.nr_used_cores = multiprocessing.cpu_count() - reserved_cores
 
@@ -45,6 +46,7 @@ class FragannotNumba:
                                    fragment_types, charges, losses, file_format,
                                    deisotope, write_file, self.nr_used_cores)
 
+# set micro batching and batch params here
 def fragment_annotation(
     ident_file: str,
     spectra_file: str,
@@ -56,7 +58,8 @@ def fragment_annotation(
     deisotope: bool,
     write_file: bool = True,
     nr_used_cores: int = 1,
-    micro_batch: bool = True) -> List[Dict[str, Any]]:
+    micro_batch: bool = True,
+    batch_size: int = 100) -> List[Dict[str, Any]]:
     """
     Annotate theoretical and observed fragment ions in a spectra file.
 
@@ -94,16 +97,17 @@ def fragment_annotation(
         i = 0
         still_spectra_available = True
         psms_json = []
+        print("Annotated spectra in total:")
         while still_spectra_available:
-            print(f"Annotated spectra in total: {i}")
-            if i + 100 < len(psms):
-                current_batch = psms[i:i+100]
+            print(f" {i}\t")
+            if i + batch_size < len(psms):
+                current_batch = psms[i:i+batch_size]
             else:
                 current_batch = psms[i:len(psms)]
                 still_spectra_available = False
             p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in current_batch)
             psms_json += list(p_result)
-            i += 100
+            i += batch_size
     else:
         p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
         p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
@@ -112,6 +116,8 @@ def fragment_annotation(
     if write_file:
         with open(P.output_fname, "w", encoding = "utf8") as f:
             json.dump(psms_json, f)
+
+    print("\nFinished spectrum annotation.")
 
     return psms_json
 
