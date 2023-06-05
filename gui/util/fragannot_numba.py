@@ -92,7 +92,7 @@ def fragment_annotation(
 
     #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
     p_psms = list(enumerate(psms))
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, i, message) for psm in p_psms)
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, message) for psm in p_psms)
 
     psms_json = list(p_result)
 
