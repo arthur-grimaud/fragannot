@@ -5,3 +5,4 @@ streamlit
 numba
 joblib
 tqdm
+stqdm

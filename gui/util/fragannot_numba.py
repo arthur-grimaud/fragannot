@@ -23,6 +23,7 @@ from numba.typed import List as numbaList
 import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
+from stqdm import stqdm
 
 class FragannotNumba:
     def __init__(self, reserved_cores: int = 0):
@@ -80,14 +81,15 @@ def fragment_annotation(
     None
     """
 
+    print("Fragannot running using: " + str(nr_used_cores) + " logical cores.")
+
     P = Parser(is_streamlit = True)
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
-    print("Fragannot running using: " + str(nr_used_cores) + " logical cores.")
-
     #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, i) for i, psm in enumerate(psms))
+    p_psms = stqdm(psms, description = "Annotating spectra: ")
+    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
 
     psms_json = list(p_result)
 
@@ -102,11 +104,10 @@ def calculate_ions_for_psms(psm,
                             fragment_types: List[str],
                             charges: List[str] | str,
                             losses: List[str],
-                            deisotope: bool,
-                            i: int = 0) -> Dict[str, Any]:
+                            deisotope: bool) -> Dict[str, Any]:
 
-    if (i + 1) % 100 == 0:
-        print(f"{i + 1} spectra annotated")
+    #if (i + 1) % 100 == 0:
+    #    print(f"{i + 1} spectra annotated")
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
