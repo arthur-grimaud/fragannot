@@ -25,8 +25,10 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 from stqdm import stqdm
 
+import streamlit as st
+
 class FragannotNumba:
-    def __init__(self, reserved_cores: int = 0):
+    def __init__(self, reserved_cores: int = 2):
         self.nr_used_cores = multiprocessing.cpu_count() - reserved_cores
 
     def fragment_annotation(
@@ -87,9 +89,13 @@ def fragment_annotation(
 
     psms = P.read(spectra_file, ident_file, file_format = file_format)
 
-    #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
-    p_psms = stqdm(psms, desc = "Annotating spectra: ")
-    p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope) for psm in p_psms)
+    stqdm_container = st.container()
+    message = st.empty()
+
+    with stqdm_container:
+        #p_psms = tqdm(psms) # tqdm is good for cli but bad for streamlit progress
+        p_psms = stqdm(psms, desc = "Annotating spectra: ")
+        p_result = Parallel(n_jobs = nr_used_cores)(delayed(calculate_ions_for_psms)(psm, tolerance, fragment_types, charges, losses, deisotope, i, message) for i, psm in enumerate(p_psms))
 
     psms_json = list(p_result)
 
@@ -104,10 +110,14 @@ def calculate_ions_for_psms(psm,
                             fragment_types: List[str],
                             charges: List[str] | str,
                             losses: List[str],
-                            deisotope: bool) -> Dict[str, Any]:
+                            deisotope: bool,
+                            i: int,
+                            message_box) -> Dict[str, Any]:
 
     #if (i + 1) % 100 == 0:
     #    print(f"{i + 1} spectra annotated")
+
+    message_box.success(f"Annotated spectra in total: {i}")
 
     if charges == "auto":  # if charges to consider not specified: use precursor charge as max charge
         charges_used = range(1, abs(psm.get_precursor_charge()), 1)
