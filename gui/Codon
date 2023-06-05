@@ -1,6 +1,6 @@
 # Dockerfile (Codon version) for Fragannot GUI
 # author: Micha Birklbauer
-# version: 1.0.0
+# version: 1.1.0
 
 FROM ubuntu:22.04
 
@@ -28,4 +28,4 @@ RUN python3 setup.py install
 WORKDIR ../gui
 RUN pip3 install -r requirements.txt
 
-CMD  ["streamlit", "run", "streamlit_app.py"]
+CMD  ["streamlit", "run", "streamlit_app.py", "--server.maxUploadSize", "5000"]

@@ -3,3 +3,6 @@ pandas
 openpyxl
 streamlit
 numba
+joblib
+tqdm
+stqdm
