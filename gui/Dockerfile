@@ -1,6 +1,6 @@
 # Dockerfile for Fragannot GUI
 # author: Micha Birklbauer
-# version: 1.1.0
+# version: 1.1.1
 
 FROM ubuntu:22.04
 
@@ -12,7 +12,11 @@ RUN apt-get update && apt-get install -y \
     git \
     python3-distutils \
     python3-lxml \
-    python3-pip
+    python3-pip \
+    libglib2.0-0 \
+    libsm6 \
+    libxrender1 \
+    libxext6
 
 RUN git clone https://github.com/arthur-grimaud/fragannot.git
 WORKDIR fragannot
